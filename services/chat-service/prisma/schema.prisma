@@ -1,0 +1,54 @@
+// Prisma schema for Chat Service
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/@prisma/chat-client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Project/Channel messages (existing)
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  projectId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@index([projectId, createdAt])
+  @@index([userId])
+}
+
+// Direct Message Conversation between two users
+model Conversation {
+  id           String          @id @default(cuid())
+  participant1 String          // Clerk user ID
+  participant2 String          // Clerk user ID
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  
+  messages     DirectMessage[]
+  
+  @@unique([participant1, participant2])
+  @@index([participant1])
+  @@index([participant2])
+  @@index([updatedAt])
+}
+
+// Direct messages between users
+model DirectMessage {
+  id             String       @id @default(cuid())
+  content        String
+  senderId       String       // Clerk user ID
+  conversationId String
+  read           Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@index([read])
+}

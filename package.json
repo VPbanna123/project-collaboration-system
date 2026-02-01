@@ -1,0 +1,38 @@
+{
+  "name": "latest_tech",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "build:services": "npm run build --prefix services/chat-service && npm run build --prefix services/notification-service && npm run build --prefix services/project-service && npm run build --prefix services/team-service && npm run build --prefix services/user-service",
+    "start": "next start",
+    "start:services": "concurrently \"npm start --prefix services/chat-service\" \"npm start --prefix services/notification-service\" \"npm start --prefix services/project-service\" \"npm start --prefix services/team-service\" \"npm start --prefix services/user-service\"",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^6.36.7",
+    "@prisma/adapter-pg": "^7.2.0",
+    "@prisma/client": "^7.2.0",
+    "dotenv": "^17.2.3",
+    "ioredis": "^5.9.1",
+    "next": "16.1.1",
+    "pg": "^8.16.3",
+    "prisma": "^7.2.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "socket.io-client": "^4.8.3",
+    "sonner": "^2.0.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/pg": "^8.16.0",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.1",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

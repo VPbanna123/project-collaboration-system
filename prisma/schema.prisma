@@ -1,0 +1,326 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// User synced from Clerk
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  name      String?
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  teamMembers     TeamMember[]
+  createdTeams    Team[]           @relation("TeamCreator")
+  assignedTasks   Task[]           @relation("TaskAssignee")
+  createdTasks    Task[]           @relation("TaskCreator")
+  comments        Comment[]
+  messages        Message[]
+  notifications   Notification[]
+  sentInvitations TeamInvitation[] @relation("InvitationSender")
+  teamMessages    TeamMessage[]
+
+  @@index([clerkId])
+  @@index([email])
+}
+
+// Team
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  imageUrl    String?
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy   User             @relation("TeamCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  members     TeamMember[]
+  projects    Project[]
+  invitations TeamInvitation[]
+  chat        TeamChat?
+
+  @@index([createdById])
+}
+
+// Team membership with roles
+model TeamMember {
+  id       String   @id @default(cuid())
+  teamId   String
+  userId   String
+  role     TeamRole @default(MEMBER)
+  joinedAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+}
+
+enum TeamRole {
+  ADMIN
+  MEMBER
+}
+
+// Team invitations
+model TeamInvitation {
+  id        String           @id @default(cuid())
+  teamId    String
+  email     String
+  role      TeamRole         @default(MEMBER)
+  status    InvitationStatus @default(PENDING)
+  invitedBy String
+  createdAt DateTime         @default(now())
+  expiresAt DateTime
+
+  team   Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  sender User @relation("InvitationSender", fields: [invitedBy], references: [id])
+
+  @@unique([teamId, email])
+  @@index([teamId])
+  @@index([email])
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+// Project (Workspace)
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  teamId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  team     Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  tasks    Task[]
+  messages Message[]
+
+  @@index([teamId])
+}
+
+// Task
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  priority    Priority   @default(MEDIUM)
+  projectId   String
+  assignedTo  String?
+  createdBy   String
+  dueDate     DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee User?     @relation("TaskAssignee", fields: [assignedTo], references: [id])
+  creator  User      @relation("TaskCreator", fields: [createdBy], references: [id])
+  comments Comment[]
+
+  @@index([projectId])
+  @@index([assignedTo])
+  @@index([createdBy])
+  @@index([status])
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// Task comments
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  taskId    String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([userId])
+}
+
+// Chat messages
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  projectId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@index([userId])
+}
+
+// Notifications
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  title     String
+  message   String
+  userId    String
+  read      Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_COMMENT
+  MENTION
+  TEAM_INVITATION
+}
+
+// Collaborative Document for projects
+model Document {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @default("")
+  projectId String
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  edits DocumentEdit[]
+
+  @@index([projectId])
+}
+
+// Document edit history
+model DocumentEdit {
+  id         String     @id @default(cuid())
+  documentId String
+  userId     String
+  userName   String
+  content    String
+  startPos   Int
+  endPos     Int
+  action     EditAction
+  createdAt  DateTime   @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([userId])
+}
+
+enum EditAction {
+  INSERT
+  DELETE
+  REPLACE
+}
+
+// Direct Message Conversation between two users
+model Conversation {
+  id           String          @id @default(cuid())
+  participant1 String          // Database user ID
+  participant2 String          // Database user ID
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  
+  messages     DirectMessage[]
+  
+  @@unique([participant1, participant2])
+  @@index([participant1])
+  @@index([participant2])
+  @@index([updatedAt])
+}
+
+// Direct messages between users
+model DirectMessage {
+  id             String       @id @default(cuid())
+  content        String
+  senderId       String       // Database user ID
+  conversationId String
+  read           Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  
+  // File attachment support
+  fileUrl        String?      // URL/path to uploaded file
+  fileName       String?      // Original filename
+  fileType       String?      // MIME type
+  fileSize       Int?         // Size in bytes
+  
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@index([read])
+}
+
+// Team group chat
+model TeamChat {
+  id        String         @id @default(cuid())
+  teamId    String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  
+  team      Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  messages  TeamMessage[]
+  
+  @@unique([teamId])
+  @@index([teamId])
+}
+
+// Team chat messages
+model TeamMessage {
+  id        String    @id @default(cuid())
+  content   String
+  senderId  String    // Database user ID
+  chatId    String
+  createdAt DateTime  @default(now())
+  
+  // File attachment support
+  fileUrl   String?   // URL/path to uploaded file
+  fileName  String?   // Original filename
+  fileType  String?   // MIME type
+  fileSize  Int?      // Size in bytes
+  
+  // Document sharing from projects
+  documentId String?  // Reference to shared Document
+  
+  chat      TeamChat  @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender    User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  
+  @@index([chatId, createdAt])
+  @@index([senderId])
+}
