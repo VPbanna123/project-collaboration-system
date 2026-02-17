@@ -1,11 +1,16 @@
 import { auth } from "@clerk/nextjs/server";
 
+// API Gateway URL - Single entry point for all services
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:4000";
+
+// All requests now go through the API Gateway
+// The gateway handles Clerk verification and routes to services
 const API_BASE_URLS = {
-  user: process.env.USER_SERVICE_URL || "http://localhost:3001",
-  team: process.env.TEAM_SERVICE_URL || "http://localhost:3002",
-  project: process.env.PROJECT_SERVICE_URL || "http://localhost:3003",
-  chat: process.env.CHAT_SERVICE_URL || "http://localhost:3004",
-  notification: process.env.NOTIFICATION_SERVICE_URL || "http://localhost:3005",
+  user: API_GATEWAY_URL,
+  team: API_GATEWAY_URL,
+  project: API_GATEWAY_URL,
+  chat: API_GATEWAY_URL,
+  notification: API_GATEWAY_URL,
 };
 
 type ServiceName = keyof typeof API_BASE_URLS;

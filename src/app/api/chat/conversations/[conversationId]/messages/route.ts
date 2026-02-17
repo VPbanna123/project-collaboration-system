@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
-const CHAT_SERVICE_URL = process.env.CHAT_SERVICE_URL || "http://localhost:3004";
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:4000";
 
 // GET messages in a conversation
 export async function GET(
@@ -20,7 +20,7 @@ export async function GET(
     const cursor = searchParams.get("cursor");
     const limit = searchParams.get("limit");
     
-    let url = `${CHAT_SERVICE_URL}/api/conversations/${conversationId}/messages`;
+    let url = `${API_GATEWAY_URL}/api/conversations/${conversationId}/messages`;
     const params = new URLSearchParams();
     if (cursor) params.append("cursor", cursor);
     if (limit) params.append("limit", limit);
@@ -55,7 +55,7 @@ export async function POST(
     const { conversationId } = await context.params;
     const body = await request.json();
     
-    const response = await fetch(`${CHAT_SERVICE_URL}/api/conversations/${conversationId}/messages`, {
+    const response = await fetch(`${API_GATEWAY_URL}/api/conversations/${conversationId}/messages`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

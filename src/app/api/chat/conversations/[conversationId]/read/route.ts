@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
-const CHAT_SERVICE_URL = process.env.CHAT_SERVICE_URL || "http://localhost:3004";
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:4000";
 
 // POST - Mark messages as read
 export async function POST(
@@ -17,7 +17,7 @@ export async function POST(
     const token = await getToken();
     const { conversationId } = await context.params;
     
-    const response = await fetch(`${CHAT_SERVICE_URL}/api/conversations/${conversationId}/read`, {
+    const response = await fetch(`${API_GATEWAY_URL}/api/conversations/${conversationId}/read`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,

@@ -1,44 +1,201 @@
-services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: teamapp_postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: teamapp
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+version: '3.8'
 
+# Network Configuration for Security
+# - public: Accessible from internet (only API Gateway)
+# - internal: Private network (all services, databases, Redis)
+networks:
+  public:
+    driver: bridge
+  internal:
+    driver: bridge
+
+services:
+  # ============================================
+  # API GATEWAY - ONLY PUBLIC-FACING SERVICE
+  # ============================================
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: api_gateway
+    ports:
+      - "4000:4000"  # ✅ ONLY service exposed to host
+    networks:
+      - public    # Can receive external requests
+      - internal  # Can communicate with internal services
+    environment:
+      - PORT=4000
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - INTERNAL_JWT_SECRET=${INTERNAL_JWT_SECRET:-change-this-in-production}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-change-this-api-key}
+      # Service URLs (internal Docker DNS)
+      - USER_SERVICE_URL=http://user-service:3001
+      - TEAM_SERVICE_URL=http://team-service:3002
+      - PROJECT_SERVICE_URL=http://project-service:3003
+      - CHAT_SERVICE_URL=http://chat-service:3004
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3005
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================
+  # REDIS - SHARED CACHE FOR ALL SERVICES
+  # Redis is in internal network, accessible by:
+  # - API Gateway (for session/token caching)
+  # - All microservices (for data caching)
+  # ============================================
+  
   redis:
     image: redis:7-alpine
     container_name: teamapp_redis
+    networks:
+      - internal  # ❌ Not accessible from outside Docker
     ports:
-      - "6379:6379"
+      - "6379:6379"  # Exposed for local dev tools only
     volumes:
       - redis_data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   redis-commander:
     image: rediscommander/redis-commander:latest
     container_name: teamapp_redis_commander
+    networks:
+      - internal
     environment:
       - REDIS_HOSTS=local:redis:6379
     ports:
       - "8081:8081"
     depends_on:
       - redis
+    restart: unless-stopped
+
+  # ============================================
+  # DATABASES - PRIVATE (INTERNAL NETWORK ONLY)
+  # ============================================
+  
+  postgres-user:
+    image: postgres:16-alpine
+    container_name: user_db
+    networks:
+      - internal  # ❌ Not directly accessible from internet
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: user_db
+    ports:
+      - "5432:5432"  # For local dev access only (remove in production)
+    volumes:
+      - postgres_user_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  postgres-team:
+    image: postgres:16-alpine
+    container_name: team_db
+    networks:
+      - internal
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: team_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_team_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  postgres-project:
+    image: postgres:16-alpine
+    container_name: project_db
+    networks:
+      - internal
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: project_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_project_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  postgres-chat:
+    image: postgres:16-alpine
+    container_name: chat_db
+    networks:
+      - internal
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: chat_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_chat_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  postgres-notification:
+    image: postgres:16-alpine
+    container_name: notification_db
+    networks:
+      - internal
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: notification_db
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_notification_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
 volumes:
-  postgres_data:
+  postgres_user_data:
+  postgres_team_data:
+  postgres_project_data:
+  postgres_chat_data:
+  postgres_notification_data:
   redis_data:

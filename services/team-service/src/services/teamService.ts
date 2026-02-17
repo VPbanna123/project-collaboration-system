@@ -14,6 +14,7 @@ export class TeamService {
     imageUrl?: string;
     createdById: string;
   }) {
+    console.log('[TeamService] createTeam - Creating team with userId:', data.createdById);
     const team = await prisma.team.create({
       data: {
         name: data.name,
@@ -31,6 +32,8 @@ export class TeamService {
         members: true,
       },
     });
+
+    console.log('[TeamService] createTeam - Team created:', team.id, 'with member userId:', data.createdById);
 
     // Invalidate user teams cache
     await CacheService.del(`user_teams:${data.createdById}`);
@@ -72,10 +75,12 @@ export class TeamService {
    * Get all teams for a user
    */
   static async getUserTeams(userId: string) {
+    console.log('[TeamService] getUserTeams - Looking for teams with userId:', userId);
     const cacheKey = `user_teams:${userId}`;
     const cached = await CacheService.get(cacheKey);
 
     if (cached) {
+      console.log('[TeamService] getUserTeams - Returning cached teams:', Array.isArray(cached) ? cached.length : 0);
       return cached;
     }
 
@@ -101,6 +106,9 @@ export class TeamService {
         updatedAt: 'desc',
       },
     });
+
+    console.log('[TeamService] getUserTeams - Query returned teams:', teams.length);
+    console.log('[TeamService] getUserTeams - Team IDs:', teams.map(t => t.id));
 
     await CacheService.set(cacheKey, teams, 300);
 

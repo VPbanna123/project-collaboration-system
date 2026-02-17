@@ -9,7 +9,7 @@ export class DocumentController {
    * Create a new document
    */
   static createDocument = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.userId!;
+    const userId = req.user!.id;
     const { projectId } = req.params;
     const { title, content } = req.body;
 
@@ -48,7 +48,7 @@ export class DocumentController {
    * Update document content
    */
   static updateDocument = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.userId!;
+    const userId = req.user!.id;
     const { documentId } = req.params;
     const { content, startPos, endPos, action, userName } = req.body;
 
@@ -86,7 +86,7 @@ export class DocumentController {
    * Delete a document
    */
   static deleteDocument = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.userId!;
+    const userId = req.user!.id;
     const { documentId } = req.params;
 
     await DocumentService.deleteDocument(documentId, userId);

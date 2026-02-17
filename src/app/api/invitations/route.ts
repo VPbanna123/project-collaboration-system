@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 
-const TEAM_SERVICE_URL = process.env.TEAM_SERVICE_URL || 'http://localhost:3002';
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:4000';
 
 /**
  * GET /api/invitations
@@ -48,9 +48,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Fetch invitations from team service
+    // Fetch invitations from team service via API Gateway
     const response = await fetch(
-      `${TEAM_SERVICE_URL}/api/teams/invitations/my?email=${encodeURIComponent(userEmail)}`,
+      `${API_GATEWAY_URL}/api/teams/invitations/my?email=${encodeURIComponent(userEmail)}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

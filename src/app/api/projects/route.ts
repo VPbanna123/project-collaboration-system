@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
-const PROJECT_SERVICE_URL = process.env.PROJECT_SERVICE_URL || "http://localhost:3003";
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:4000";
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,9 +19,10 @@ export async function GET(request: NextRequest) {
     
     // Build URL with teamId filter if provided
     const url = teamId 
-      ? `${PROJECT_SERVICE_URL}/api/projects?teamId=${teamId}`
-      : `${PROJECT_SERVICE_URL}/api/projects`;
+      ? `${API_GATEWAY_URL}/api/projects?teamId=${teamId}`
+      : `${API_GATEWAY_URL}/api/projects`;
     
+    console.log('[Next.js API] GET /api/projects - Calling API Gateway:', url);
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -65,7 +66,8 @@ export async function POST(request: NextRequest) {
     const token = await getToken();
     const body = await request.json();
 
-    const response = await fetch(`${PROJECT_SERVICE_URL}/api/projects`, {
+    console.log('[Next.js API] POST /api/projects - Calling API Gateway');
+    const response = await fetch(`${API_GATEWAY_URL}/api/projects`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

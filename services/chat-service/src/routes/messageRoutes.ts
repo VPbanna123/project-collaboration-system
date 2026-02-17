@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { MessageController } from '../controllers/messageController';
-import { clerkAuth, requireAuth } from '@shared/middleware/auth';
+import { verifyInternalToken } from '@shared/middleware/internalAuth';
 
 const router = Router();
 
-router.use(clerkAuth);
-router.use(requireAuth);
+// All routes require authentication from API Gateway
+router.use(verifyInternalToken);
 
 router.get('/:projectId', MessageController.getMessages);
 router.post('/', MessageController.sendMessage);

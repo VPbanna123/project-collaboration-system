@@ -1,11 +1,10 @@
 import { Router } from 'express';
 import { TaskController } from '../controllers/taskController';
-import { clerkAuth, requireAuth } from '@shared/middleware/auth';
+import { verifyInternalToken } from '@shared/middleware/internalAuth';
 
 const router = Router();
 
-router.use(clerkAuth);
-router.use(requireAuth);
+router.use(verifyInternalToken);
 
 router.post('/', TaskController.createTask);
 router.get('/:id', TaskController.getTaskById);

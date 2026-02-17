@@ -1,5 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Notification Service - Owns notification data
+// Database: notification_db (port: 5436)
 
 generator client {
   provider = "prisma-client-js"
@@ -8,6 +8,66 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Notifications - PRIMARY DATA OWNER
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  title     String
+  message   String
+  userId    String           // Reference to User in user-service (no FK)
+  read      Boolean          @default(false)
+  link      String?
+  metadata  Json?            // Additional contextual data
+  createdAt DateTime         @default(now())
+
+  @@index([userId, read])
+  @@index([createdAt])
+  @@index([type])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_COMMENT
+  TASK_UPDATED
+  MENTION
+  TEAM_INVITATION
+  TEAM_JOINED
+  PROJECT_CREATED
+  MESSAGE_RECEIVED
+  DOCUMENT_SHARED
+}
+
+// Denormalized user data for faster queries (synced from user-service)
+model UserSnapshot {
+  id        String   @id
+  userId    String   @unique
+  email     String
+  name      String?
+  imageUrl  String?
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("user_snapshots")
+}
+
+// Notification preferences per user
+model NotificationPreference {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  emailEnabled          Boolean  @default(true)
+  pushEnabled           Boolean  @default(true)
+  taskAssignedEmail     Boolean  @default(true)
+  taskCommentEmail      Boolean  @default(true)
+  teamInvitationEmail   Boolean  @default(true)
+  mentionEmail          Boolean  @default(true)
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId])
+  @@map("notification_preferences")
 }
 
 // User synced from Clerk

@@ -92,7 +92,13 @@ READY_TO_RUN.md
 IMPLEMENTATION_PLAN.md
 PAGES_INTEGRATION.md
 implementaion.plan
-
+API_GATEWAY_PATTERN.md
+API_GATEWAY_SETUP.md
+COMPLETE_ARCHITECTURE_WORKFLOW.md
+MICROSERVICES_ARCHITECTURE.md
+MICROSERVICES_REFACTORING_SUMMARY.md
+NETWORK_ISOLATION_GUIDE.md
+TERMINAL_COMMANDS.txt
 # LaTeX files
 *.aux
 *.log
@@ -105,3 +111,12 @@ implementaion.plan
 *.js.map
 *.d.ts.map
 .env
+.tex
+
+# Added by DevSecOps Git Guardian
+.env.local
+.env.*.local
+*.key
+.ssh
+.credentials
+secrets.json

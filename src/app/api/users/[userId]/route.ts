@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://localhost:3001";
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:4000";
 
 // GET user by Clerk ID
 export async function GET(
@@ -17,7 +17,7 @@ export async function GET(
     const token = await getToken();
     const { userId } = await context.params;
     
-    const response = await fetch(`${USER_SERVICE_URL}/api/users/${userId}`, {
+    const response = await fetch(`${API_GATEWAY_URL}/api/users/${userId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

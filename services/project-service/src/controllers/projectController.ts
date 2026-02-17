@@ -4,7 +4,10 @@ import { asyncHandler } from '@shared/middleware/errorHandler';
 
 export class ProjectController {
   static getProjects = asyncHandler(async (req: Request, res: Response) => {
-    const teamId = req.query.teamId as string;
+    // Handle case where teamId might be an array (duplicate query params)
+    const teamIdRaw = req.query.teamId;
+    const teamId = Array.isArray(teamIdRaw) ? teamIdRaw[0] as string : teamIdRaw as string | undefined;
+    console.log('[ProjectController] getProjects - teamId:', teamId);
     const projects = await ProjectService.getProjects(teamId);
     res.json({ success: true, data: projects });
   });

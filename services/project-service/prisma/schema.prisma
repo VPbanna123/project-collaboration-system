@@ -1,5 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Project Service - Owns Project, Task, Comment, Document data
+// Database: project_db (port: 5434)
 
 generator client {
   provider = "prisma-client-js"
@@ -8,114 +8,26 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-// User synced from Clerk
-model User {
-  id        String   @id @default(cuid())
-  clerkId   String   @unique
-  email     String   @unique
-  name      String?
-  imageUrl  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  teamMembers     TeamMember[]
-  createdTeams    Team[]           @relation("TeamCreator")
-  assignedTasks   Task[]           @relation("TaskAssignee")
-  createdTasks    Task[]           @relation("TaskCreator")
-  comments        Comment[]
-  messages        Message[]
-  notifications   Notification[]
-  sentInvitations TeamInvitation[] @relation("InvitationSender")
-
-  @@index([clerkId])
-  @@index([email])
-}
-
-// Team
-model Team {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  imageUrl    String?
-  createdById String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  createdBy   User             @relation("TeamCreator", fields: [createdById], references: [id], onDelete: Cascade)
-  members     TeamMember[]
-  projects    Project[]
-  invitations TeamInvitation[]
-
-  @@index([createdById])
-}
-
-// Team membership with roles
-model TeamMember {
-  id       String   @id @default(cuid())
-  teamId   String
-  userId   String
-  role     TeamRole @default(MEMBER)
-  joinedAt DateTime @default(now())
-
-  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([teamId, userId])
-  @@index([teamId])
-  @@index([userId])
-}
-
-enum TeamRole {
-  ADMIN
-  MEMBER
-}
-
-// Team invitations
-model TeamInvitation {
-  id        String           @id @default(cuid())
-  teamId    String
-  email     String
-  role      TeamRole         @default(MEMBER)
-  status    InvitationStatus @default(PENDING)
-  invitedBy String
-  createdAt DateTime         @default(now())
-  expiresAt DateTime
-
-  team   Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  sender User @relation("InvitationSender", fields: [invitedBy], references: [id])
-
-  @@unique([teamId, email])
-  @@index([teamId])
-  @@index([email])
-}
-
-enum InvitationStatus {
-  PENDING
-  ACCEPTED
-  DECLINED
-  EXPIRED
-}
-
-// Project (Workspace)
+// Project (Workspace) - PRIMARY DATA OWNER
 model Project {
   id          String   @id @default(cuid())
   name        String
   description String?
-  teamId      String
+  teamId      String   // Reference to Team in team-service (no FK)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  team     Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  tasks    Task[]
-  messages Message[]
+  tasks     Task[]
+  documents Document[]
 
   @@index([teamId])
+  @@map("projects")
 }
 
-// Task
+// Task - PRIMARY DATA OWNER
 model Task {
   id          String     @id @default(cuid())
   title       String
@@ -123,21 +35,21 @@ model Task {
   status      TaskStatus @default(TODO)
   priority    Priority   @default(MEDIUM)
   projectId   String
-  assignedTo  String?
-  createdBy   String
+  assignedTo  String?    // Reference to User in user-service (no FK)
+  createdBy   String     // Reference to User in user-service (no FK)
   dueDate     DateTime?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
   project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  assignee User?     @relation("TaskAssignee", fields: [assignedTo], references: [id])
-  creator  User      @relation("TaskCreator", fields: [createdBy], references: [id])
   comments Comment[]
 
   @@index([projectId])
   @@index([assignedTo])
   @@index([createdBy])
   @@index([status])
+  @@index([dueDate])
+  @@map("tasks")
 }
 
 enum TaskStatus {
@@ -153,82 +65,45 @@ enum Priority {
   URGENT
 }
 
-// Task comments
+// Task comments - PRIMARY DATA OWNER
 model Comment {
   id        String   @id @default(cuid())
   content   String
   taskId    String
-  userId    String
+  userId    String   // Reference to User in user-service (no FK)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([taskId])
   @@index([userId])
+  @@map("comments")
 }
 
-// Chat messages
-model Message {
-  id        String   @id @default(cuid())
-  content   String
-  projectId String
-  userId    String
-  createdAt DateTime @default(now())
-
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([projectId, createdAt])
-  @@index([userId])
-}
-
-// Notifications
-model Notification {
-  id        String           @id @default(cuid())
-  type      NotificationType
-  title     String
-  message   String
-  userId    String
-  read      Boolean          @default(false)
-  link      String?
-  createdAt DateTime         @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, read])
-  @@index([createdAt])
-}
-
-enum NotificationType {
-  TASK_ASSIGNED
-  TASK_COMMENT
-  MENTION
-  TEAM_INVITATION
-}
-
-// Collaborative Document for projects
+// Collaborative Document - PRIMARY DATA OWNER
 model Document {
   id        String   @id @default(cuid())
   title     String
   content   String   @default("")
   projectId String
-  createdBy String
+  createdBy String   // Reference to User in user-service (no FK)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   edits DocumentEdit[]
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
+  @@map("documents")
 }
 
-// Document edit history
+// Document edit history - PRIMARY DATA OWNER
 model DocumentEdit {
   id         String     @id @default(cuid())
   documentId String
-  userId     String
-  userName   String
+  userId     String     // Reference to User in user-service (no FK)
+  userName   String     // Cached from user-service
   content    String
   startPos   Int
   endPos     Int
@@ -239,10 +114,24 @@ model DocumentEdit {
 
   @@index([documentId])
   @@index([userId])
+  @@map("document_edits")
 }
 
 enum EditAction {
   INSERT
   DELETE
   REPLACE
+}
+
+// Denormalized user data for faster queries (synced from user-service)
+model UserSnapshot {
+  id        String   @id
+  userId    String   @unique
+  email     String
+  name      String?
+  imageUrl  String?
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("user_snapshots")
 }

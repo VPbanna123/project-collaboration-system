@@ -2,26 +2,10 @@ import { Request, Response } from 'express';
 import { TaskService } from '../services/taskService';
 import { asyncHandler } from '@shared/middleware/errorHandler';
 import { TaskStatus, Priority } from '../../../node_modules/.prisma/project-client';
-import { prisma } from '../lib/prisma';
-
-// Helper to get database user ID from Clerk ID
-async function getUserIdFromClerkId(clerkId: string): Promise<string> {
-  const user = await prisma.user.findUnique({
-    where: { clerkId },
-    select: { id: true }
-  });
-  
-  if (!user) {
-    throw new Error(`User not found for Clerk ID: ${clerkId}`);
-  }
-  
-  return user.id;
-}
 
 export class TaskController {
   static createTask = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
-    const userId = await getUserIdFromClerkId(clerkId);
+    const userId = req.user!.id; // Already database user ID from API Gateway
     const { title, description, projectId, assignedTo, status, priority, dueDate } = req.body;
     
     if (!title || !projectId) {
@@ -68,8 +52,7 @@ export class TaskController {
   });
 
   static addComment = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
-    const userId = await getUserIdFromClerkId(clerkId);
+    const userId = req.user!.id; // Already database user ID from API Gateway
     const { id } = req.params;
     const { content } = req.body;
     

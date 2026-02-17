@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
-const PROJECT_SERVICE_URL = process.env.PROJECT_SERVICE_URL || "http://localhost:3003";
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:4000";
 
 // GET a single document
 export async function GET(
@@ -17,7 +17,7 @@ export async function GET(
     const token = await getToken();
     const { documentId } = await context.params;
     
-    const response = await fetch(`${PROJECT_SERVICE_URL}/api/documents/${documentId}`, {
+    const response = await fetch(`${API_GATEWAY_URL}/api/documents/${documentId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -52,7 +52,7 @@ export async function PUT(
     const { documentId } = await context.params;
     const body = await request.json();
 
-    const response = await fetch(`${PROJECT_SERVICE_URL}/api/documents/${documentId}`, {
+    const response = await fetch(`${API_GATEWAY_URL}/api/documents/${documentId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -89,7 +89,7 @@ export async function DELETE(
     const token = await getToken();
     const { documentId } = await context.params;
 
-    const response = await fetch(`${PROJECT_SERVICE_URL}/api/documents/${documentId}`, {
+    const response = await fetch(`${API_GATEWAY_URL}/api/documents/${documentId}`, {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${token}`,

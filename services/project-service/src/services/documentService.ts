@@ -81,8 +81,11 @@ export class DocumentService {
       throw new AppError('Document not found', 404);
     }
 
+    console.log('[DocumentService] Update check - Document createdBy:', document.createdBy, 'Request userId:', userId);
+
     // Only creator can edit the document
     if (document.createdBy !== userId) {
+      console.error('[DocumentService] Access denied - createdBy:', document.createdBy, 'userId:', userId);
       throw new AppError('Only the document creator can edit it', 403);
     }
 

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
-const TEAM_SERVICE_URL = process.env.TEAM_SERVICE_URL || "http://localhost:3002";
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://localhost:3001";
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:4000";
 
 interface TeamMember {
   id: string;
@@ -32,7 +31,8 @@ export async function GET() {
     }
 
     const token = await getToken();
-    const response = await fetch(`${TEAM_SERVICE_URL}/api/teams`, {
+    console.log('[Next.js API] GET /api/teams - Calling API Gateway');
+    const response = await fetch(`${API_GATEWAY_URL}/api/teams`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -62,7 +62,7 @@ export async function GET() {
             team.members.map(async (member: TeamMember) => {
               try {
                 const userResponse = await fetch(
-                  `${USER_SERVICE_URL}/api/users/${member.userId}`,
+                  `${API_GATEWAY_URL}/api/users/${member.userId}`,
                   {
                     headers: {
                       Authorization: `Bearer ${token}`,
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
     
     // Sync user first to ensure they exist in database
     try {
-      const userSyncResponse = await fetch(`${USER_SERVICE_URL}/api/users/sync`, {
+      const userSyncResponse = await fetch(`${API_GATEWAY_URL}/api/users/sync`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -133,7 +133,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    const response = await fetch(`${TEAM_SERVICE_URL}/api/teams`, {
+    console.log('[Next.js API] POST /api/teams - Calling API Gateway');
+    const response = await fetch(`${API_GATEWAY_URL}/api/teams`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

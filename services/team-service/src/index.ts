@@ -18,6 +18,15 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`[Team Service] ${req.method} ${req.path} - Headers:`, {
+    'x-internal-token': req.headers['x-internal-token'] ? 'present' : 'missing',
+    'x-user-id': req.headers['x-user-id'],
+  });
+  next();
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'team-service' });

@@ -2,21 +2,6 @@ import { Request, Response } from 'express';
 // import { TeamChatService } from '../services/teamChatService';
 import { TeamChatService } from '../services/teamChatService';
 import { asyncHandler } from '@shared/middleware/errorHandler';
-import { prisma } from '../lib/prisma';
-
-// Helper to get database user ID from Clerk ID
-async function getUserIdFromClerkId(clerkId: string): Promise<string> {
-  const user = await prisma.user.findUnique({
-    where: { clerkId },
-    select: { id: true }
-  });
-  
-  if (!user) {
-    throw new Error(`User not found for Clerk ID: ${clerkId}`);
-  }
-  
-  return user.id;
-}
 
 export class TeamChatController {
   /**
@@ -44,8 +29,7 @@ export class TeamChatController {
    * Send a message in team chat
    */
   static sendTeamMessage = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
-    const userId = await getUserIdFromClerkId(clerkId);
+    const userId = req.user!.id; // Already database user ID from API Gateway
     const { teamId } = req.params;
     const { content, fileUrl, fileName, fileType, fileSize, documentId } = req.body;
 

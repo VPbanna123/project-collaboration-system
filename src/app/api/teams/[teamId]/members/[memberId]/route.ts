@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
-const TEAM_SERVICE_URL = process.env.TEAM_SERVICE_URL || "http://localhost:3002";
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:4000";
 
 export async function DELETE(
   request: NextRequest,
@@ -17,7 +17,7 @@ export async function DELETE(
     const { teamId, memberId } = await params;
     const token = await getToken();
     
-    const response = await fetch(`${TEAM_SERVICE_URL}/api/teams/${teamId}/members/${memberId}`, {
+    const response = await fetch(`${API_GATEWAY_URL}/api/teams/${teamId}/members/${memberId}`, {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -55,7 +55,7 @@ export async function PATCH(
     const token = await getToken();
     const body = await request.json();
     
-    const response = await fetch(`${TEAM_SERVICE_URL}/api/teams/${teamId}/members/${memberId}`, {
+    const response = await fetch(`${API_GATEWAY_URL}/api/teams/${teamId}/members/${memberId}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",

@@ -1,31 +1,34 @@
-// Prisma schema for Chat Service
+// Chat Service - Owns all messaging data
+// Database: chat_db (port: 5435)
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../node_modules/@prisma/chat-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-// Project/Channel messages (existing)
+// Project/Channel messages - PRIMARY DATA OWNER
 model Message {
   id        String   @id @default(cuid())
   content   String
-  projectId String
-  userId    String
+  projectId String   // Reference to Project in project-service (no FK)
+  userId    String   // Reference to User in user-service (no FK)
   createdAt DateTime @default(now())
 
   @@index([projectId, createdAt])
   @@index([userId])
+  @@map("messages")
 }
 
-// Direct Message Conversation between two users
+// Direct Message Conversation - PRIMARY DATA OWNER
 model Conversation {
   id           String          @id @default(cuid())
-  participant1 String          // Clerk user ID
-  participant2 String          // Clerk user ID
+  participant1 String          // Reference to User in user-service (no FK)
+  participant2 String          // Reference to User in user-service (no FK)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
   
@@ -35,20 +38,78 @@ model Conversation {
   @@index([participant1])
   @@index([participant2])
   @@index([updatedAt])
+  @@map("conversations")
 }
 
-// Direct messages between users
+// Direct messages - PRIMARY DATA OWNER
 model DirectMessage {
   id             String       @id @default(cuid())
   content        String
-  senderId       String       // Clerk user ID
+  senderId       String       // Reference to User in user-service (no FK)
   conversationId String
   read           Boolean      @default(false)
   createdAt      DateTime     @default(now())
+  
+  // File attachment support
+  fileUrl        String?
+  fileName       String?
+  fileType       String?
+  fileSize       Int?
   
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   
   @@index([conversationId, createdAt])
   @@index([senderId])
   @@index([read])
+  @@map("direct_messages")
+}
+
+// Team group chat - PRIMARY DATA OWNER
+model TeamChat {
+  id        String         @id @default(cuid())
+  teamId    String         @unique // Reference to Team in team-service (no FK)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  
+  messages  TeamMessage[]
+  
+  @@index([teamId])
+  @@map("team_chats")
+}
+
+// Team chat messages - PRIMARY DATA OWNER
+model TeamMessage {
+  id        String    @id @default(cuid())
+  content   String
+  senderId  String    // Reference to User in user-service (no FK)
+  chatId    String
+  createdAt DateTime  @default(now())
+  
+  // File attachment support
+  fileUrl   String?
+  fileName  String?
+  fileType  String?
+  fileSize  Int?
+  
+  // Document sharing reference
+  documentId String?  // Reference to Document in project-service (no FK)
+  
+  chat      TeamChat  @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  
+  @@index([chatId, createdAt])
+  @@index([senderId])
+  @@map("team_messages")
+}
+
+// Denormalized user data for faster queries (synced from user-service)
+model UserSnapshot {
+  id        String   @id
+  userId    String   @unique
+  email     String
+  name      String?
+  imageUrl  String?
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("user_snapshots")
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
-const CHAT_SERVICE_URL = process.env.CHAT_SERVICE_URL || "http://localhost:3004";
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:4000";
 
 export async function GET(
   request: NextRequest,
@@ -16,7 +16,7 @@ export async function GET(
 
     const token = await getToken();
     const response = await fetch(
-      `${CHAT_SERVICE_URL}/api/messages/${params.projectId}`,
+      `${API_GATEWAY_URL}/api/messages/${params.projectId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

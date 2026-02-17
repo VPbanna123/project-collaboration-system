@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://localhost:3001";
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:4000";
 
 // GET - Search users by name or email
 export async function GET(request: NextRequest) {
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     }
     
     const response = await fetch(
-      `${USER_SERVICE_URL}/api/users/internal/search?q=${encodeURIComponent(query)}&excludeUserId=${userId}`,
+      `${API_GATEWAY_URL}/api/users/internal/search?q=${encodeURIComponent(query)}&excludeUserId=${userId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

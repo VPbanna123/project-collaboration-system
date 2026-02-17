@@ -1,21 +1,6 @@
 import { Request, Response } from 'express';
 import { ConversationService } from '../services/conversationService';
 import { asyncHandler } from '@shared/middleware/errorHandler';
-import { prisma } from '../lib/prisma';
-
-// Helper to get database user ID from Clerk ID
-async function getUserIdFromClerkId(clerkId: string): Promise<string> {
-  const user = await prisma.user.findUnique({
-    where: { clerkId },
-    select: { id: true }
-  });
-  
-  if (!user) {
-    throw new Error(`User not found for Clerk ID: ${clerkId}`);
-  }
-  
-  return user.id;
-}
 
 export class ConversationController {
   /**
@@ -23,8 +8,7 @@ export class ConversationController {
    * Get all conversations for the current user
    */
   static getUserConversations = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
-    const userId = await getUserIdFromClerkId(clerkId);
+    const userId = req.user!.id; // Already database user ID from API Gateway
     
     const conversations = await ConversationService.getUserConversations(userId);
     
@@ -39,8 +23,7 @@ export class ConversationController {
    * Get unread message count
    */
   static getUnreadCount = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
-    const userId = await getUserIdFromClerkId(clerkId);
+    const userId = req.user!.id; // Already database user ID from API Gateway
     
     const count = await ConversationService.getUnreadCount(userId);
     
@@ -55,8 +38,7 @@ export class ConversationController {
    * Start or get existing conversation with a user
    */
   static startConversation = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
-    const userId = await getUserIdFromClerkId(clerkId);
+    const userId = req.user!.id; // Already database user ID from API Gateway
     const { otherUserId } = req.body;
 
     if (!otherUserId) {
@@ -66,17 +48,15 @@ export class ConversationController {
       });
     }
 
-    // Convert other user's Clerk ID to Database ID
-    const otherUserDbId = await getUserIdFromClerkId(otherUserId);
-
-    if (userId === otherUserDbId) {
+    // otherUserId is also already a database ID (not Clerk ID)
+    if (userId === otherUserId) {
       return res.status(400).json({
         success: false,
         error: 'Cannot start conversation with yourself',
       });
     }
 
-    const conversation = await ConversationService.getOrCreateConversation(userId, otherUserDbId);
+    const conversation = await ConversationService.getOrCreateConversation(userId, otherUserId);
     
     res.json({
       success: true,
@@ -89,8 +69,7 @@ export class ConversationController {
    * Get messages in a conversation
    */
   static getMessages = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
-    const userId = await getUserIdFromClerkId(clerkId);
+    const userId = req.user!.id; // Already database user ID from API Gateway
     const { conversationId } = req.params;
     const { cursor, limit } = req.query;
 
@@ -112,8 +91,7 @@ export class ConversationController {
    * Send a message in a conversation
    */
   static sendMessage = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
-    const userId = await getUserIdFromClerkId(clerkId);
+    const userId = req.user!.id; // Already database user ID from API Gateway
     const { conversationId } = req.params;
     const { content, fileUrl, fileName, fileType, fileSize } = req.body;
 
@@ -142,8 +120,7 @@ export class ConversationController {
    * Mark messages as read
    */
   static markAsRead = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
-    const userId = await getUserIdFromClerkId(clerkId);
+    const userId = req.user!.id; // Already database user ID from API Gateway
     const { conversationId } = req.params;
 
     await ConversationService.markAsRead(conversationId, userId);
@@ -159,7 +136,7 @@ export class ConversationController {
    * Delete a conversation
    */
   static deleteConversation = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.userId!;
+    const userId = req.user!.id;
     const { conversationId } = req.params;
 
     await ConversationService.deleteConversation(conversationId, userId);

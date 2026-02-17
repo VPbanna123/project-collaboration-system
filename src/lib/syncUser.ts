@@ -1,7 +1,8 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { redis } from "@/lib/redis";
 
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://localhost:3001";
+// API Gateway URL - All service calls go through here
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:4000";
 
 export async function syncUser() {
   try {
@@ -22,7 +23,7 @@ export async function syncUser() {
     // 2. Try to get from user-service database first
     try {
       const token = await getToken();
-      const dbResponse = await fetch(`${USER_SERVICE_URL}/api/users/${userId}`, {
+      const dbResponse = await fetch(`${API_GATEWAY_URL}/api/users/${userId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -71,10 +72,10 @@ export async function syncUser() {
       console.warn(`Using fallback email: ${email}`);
     }
 
-    // 4. Sync to user-service via API
+    // 4. Sync to user-service via API Gateway
     try {
       const token = await getToken();
-      const response = await fetch(`${USER_SERVICE_URL}/api/users/sync`, {
+      const response = await fetch(`${API_GATEWAY_URL}/api/users/sync`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

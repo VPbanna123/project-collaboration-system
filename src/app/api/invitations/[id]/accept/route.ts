@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 
-const TEAM_SERVICE_URL = process.env.TEAM_SERVICE_URL || 'http://localhost:3002';
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:4000';
 
 /**
  * POST /api/invitations/[id]/accept
@@ -55,7 +55,7 @@ export async function POST(
 
     // Accept invitation via team service
     const response = await fetch(
-      `${TEAM_SERVICE_URL}/api/teams/invitations/${invitationId}/accept`,
+      `${API_GATEWAY_URL}/api/teams/invitations/${invitationId}/accept`,
       {
         method: 'POST',
         headers: {
@@ -144,7 +144,7 @@ export async function DELETE(
 
     // Decline invitation via team service
     const response = await fetch(
-      `${TEAM_SERVICE_URL}/api/teams/invitations/${invitationId}/decline`,
+      `${API_GATEWAY_URL}/api/teams/invitations/${invitationId}/decline`,
       {
         method: 'POST',
         headers: {

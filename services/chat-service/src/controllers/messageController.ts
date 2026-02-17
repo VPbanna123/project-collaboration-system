@@ -1,21 +1,6 @@
 import { Request, Response } from 'express';
 import { ChatService } from '../services/chatService';
 import { asyncHandler } from '@shared/middleware/errorHandler';
-import { prisma } from '../lib/prisma';
-
-// Helper to get database user ID from Clerk ID
-async function getUserIdFromClerkId(clerkId: string): Promise<string> {
-  const user = await prisma.user.findUnique({
-    where: { clerkId },
-    select: { id: true }
-  });
-  
-  if (!user) {
-    throw new Error(`User not found for Clerk ID: ${clerkId}`);
-  }
-  
-  return user.id;
-}
 
 export class MessageController {
   static getMessages = asyncHandler(async (req: Request, res: Response) => {
@@ -27,8 +12,7 @@ export class MessageController {
   });
 
   static sendMessage = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
-    const userId = await getUserIdFromClerkId(clerkId);
+    const userId = req.user!.id; // Already database user ID from API Gateway
     const { content, projectId } = req.body;
 
     if (!content || !projectId) {

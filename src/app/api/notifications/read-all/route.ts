@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
-const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL || "http://localhost:3005";
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:4000";
 
 export async function PUT() {
   try {
@@ -13,7 +13,7 @@ export async function PUT() {
 
     const token = await getToken();
     const response = await fetch(
-      `${NOTIFICATION_SERVICE_URL}/api/notifications/read-all`,
+      `${API_GATEWAY_URL}/api/notifications/read-all`,
       {
         method: "PUT",
         headers: {

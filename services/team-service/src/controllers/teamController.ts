@@ -2,63 +2,36 @@ import { Request, Response } from 'express';
 import { TeamService } from '../services/teamService';
 import { asyncHandler } from '@shared/middleware/errorHandler';
 import { TeamRole } from '../../../node_modules/.prisma/team-client';
-import { prisma } from '../lib/prisma';
 
-// Helper function to get database user ID from Clerk ID
-async function getUserIdFromClerkId(clerkId: string): Promise<string | null> {
-  const user = await prisma.user.findUnique({
-    where: { clerkId },
-    select: { id: true }
-  });
-  return user?.id || null;
-}
+// NOTE: req.user.id is already the database user ID (not Clerk ID)
+// The API Gateway converts Clerk ID to database ID before forwarding
 
 export class TeamController {
   // Get user teams
   static getUserTeams = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
+    const userId = req.user!.id; // Already database user ID from API Gateway
+    console.log('[Team Controller] getUserTeams - User ID from req.user:', userId);
+    console.log('[Team Controller] getUserTeams - Full req.user:', req.user);
     
-    // Look up user by Clerk ID to get database ID
-    const user = await prisma.user.findUnique({
-      where: { clerkId },
-      select: { id: true }
-    });
-
-    if (!user) {
-      return res.json({ success: true, data: [] });
-    }
-    
-    const teams = await TeamService.getUserTeams(user.id);
+    const teams = await TeamService.getUserTeams(userId);
+    console.log('[Team Controller] getUserTeams - Teams found:', Array.isArray(teams) ? teams.length : 0);
     res.json({ success: true, data: teams });
   });
 
   // Create team
   static createTeam = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
+    const userId = req.user!.id; // Already database user ID from API Gateway
     const { name, description, imageUrl } = req.body;
 
     if (!name) {
       return res.status(400).json({ success: false, error: 'Team name is required' });
     }
 
-    // Look up user by Clerk ID to get database ID
-    const user = await prisma.user.findUnique({
-      where: { clerkId },
-      select: { id: true }
-    });
-
-    if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'User not found. Please refresh and try again.' 
-      });
-    }
-
     const team = await TeamService.createTeam({
       name,
       description,
       imageUrl,
-      createdById: user.id,
+      createdById: userId,
     });
 
     res.status(201).json({ success: true, data: team, message: 'Team created' });
@@ -78,14 +51,9 @@ export class TeamController {
 
   // Update team
   static updateTeam = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
+    const userId = req.user!.id; // Already database user ID from API Gateway
     const { id } = req.params;
     const { name, description, imageUrl } = req.body;
-
-    const userId = await getUserIdFromClerkId(clerkId);
-    if (!userId) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
 
     const team = await TeamService.updateTeam(id, userId, {
       name,
@@ -98,13 +66,8 @@ export class TeamController {
 
   // Delete team
   static deleteTeam = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
+    const userId = req.user!.id; // Already database user ID from API Gateway
     const { id } = req.params;
-
-    const userId = await getUserIdFromClerkId(clerkId);
-    if (!userId) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
 
     await TeamService.deleteTeam(id, userId);
     res.json({ success: true, message: 'Team deleted' });
@@ -112,17 +75,12 @@ export class TeamController {
 
   // Add member
   static addMember = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
+    const userId = req.user!.id; // Already database user ID from API Gateway
     const { id } = req.params;
     const { userId: newUserId, role = 'MEMBER' } = req.body;
 
     if (!newUserId) {
       return res.status(400).json({ success: false, error: 'User ID required' });
-    }
-
-    const userId = await getUserIdFromClerkId(clerkId);
-    if (!userId) {
-      return res.status(404).json({ success: false, error: 'User not found' });
     }
 
     const member = await TeamService.addMember(id, userId, newUserId, role as TeamRole);
@@ -131,13 +89,8 @@ export class TeamController {
 
   // Remove member
   static removeMember = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
+    const userId = req.user!.id; // Already database user ID from API Gateway
     const { id, memberId } = req.params;
-
-    const userId = await getUserIdFromClerkId(clerkId);
-    if (!userId) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
 
     await TeamService.removeMember(id, userId, memberId);
     res.json({ success: true, message: 'Member removed' });
@@ -145,17 +98,12 @@ export class TeamController {
 
   // Update member role
   static updateMemberRole = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
+    const userId = req.user!.id; // Already database user ID from API Gateway
     const { id, memberId } = req.params;
     const { role } = req.body;
 
     if (!role) {
       return res.status(400).json({ success: false, error: 'Role is required' });
-    }
-
-    const userId = await getUserIdFromClerkId(clerkId);
-    if (!userId) {
-      return res.status(404).json({ success: false, error: 'User not found' });
     }
 
     const member = await TeamService.updateMemberRole(id, userId, memberId, role as TeamRole);
@@ -164,13 +112,8 @@ export class TeamController {
 
   // Get invitations
   static getInvitations = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
+    const userId = req.user!.id; // Already database user ID from API Gateway
     const { id } = req.params;
-
-    const userId = await getUserIdFromClerkId(clerkId);
-    if (!userId) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
 
     const invitations = await TeamService.getTeamInvitations(id, userId);
     res.json({ success: true, data: invitations });
@@ -178,7 +121,6 @@ export class TeamController {
 
   // Get my invitations (for current user's email)
   static getMyInvitations = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.userId!;
     const { email } = req.query;
 
     if (!email || typeof email !== 'string') {
@@ -191,17 +133,12 @@ export class TeamController {
 
   // Send invitation
   static sendInvitation = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
+    const userId = req.user!.id; // Already database user ID from API Gateway
     const { id } = req.params;
     const { email, role = 'MEMBER' } = req.body;
 
     if (!email) {
       return res.status(400).json({ success: false, error: 'Email is required' });
-    }
-
-    const userId = await getUserIdFromClerkId(clerkId);
-    if (!userId) {
-      return res.status(404).json({ success: false, error: 'User not found' });
     }
 
     const invitation = await TeamService.sendInvitation(id, userId, email, role as TeamRole);
@@ -210,17 +147,12 @@ export class TeamController {
 
   // Accept invitation
   static acceptInvitation = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
+    const userId = req.user!.id; // Already database user ID from API Gateway
     const { invitationId } = req.params;
     const { email } = req.body;
 
     if (!email) {
       return res.status(400).json({ success: false, error: 'Email is required' });
-    }
-
-    const userId = await getUserIdFromClerkId(clerkId);
-    if (!userId) {
-      return res.status(404).json({ success: false, error: 'User not found' });
     }
 
     await TeamService.acceptInvitation(invitationId, email, userId);

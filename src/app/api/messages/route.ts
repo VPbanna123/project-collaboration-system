@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
-const CHAT_SERVICE_URL = process.env.CHAT_SERVICE_URL || "http://localhost:3004";
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:4000";
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const token = await getToken();
     const body = await request.json();
 
-    const response = await fetch(`${CHAT_SERVICE_URL}/api/messages`, {
+    const response = await fetch(`${API_GATEWAY_URL}/api/messages`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

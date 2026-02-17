@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
-const PROJECT_SERVICE_URL = process.env.PROJECT_SERVICE_URL || "http://localhost:3003";
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:4000";
 
 // GET a single project
 export async function GET(
@@ -17,7 +17,7 @@ export async function GET(
     const token = await getToken();
     const { projectId } = await context.params;
     
-    const response = await fetch(`${PROJECT_SERVICE_URL}/api/projects/${projectId}`, {
+    const response = await fetch(`${API_GATEWAY_URL}/api/projects/${projectId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -52,7 +52,7 @@ export async function PUT(
     const { projectId } = await context.params;
     const body = await request.json();
 
-    const response = await fetch(`${PROJECT_SERVICE_URL}/api/projects/${projectId}`, {
+    const response = await fetch(`${API_GATEWAY_URL}/api/projects/${projectId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -83,7 +83,7 @@ export async function DELETE(
     const token = await getToken();
     const { projectId } = await context.params;
 
-    const response = await fetch(`${PROJECT_SERVICE_URL}/api/projects/${projectId}`, {
+    const response = await fetch(`${API_GATEWAY_URL}/api/projects/${projectId}`, {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${token}`,

@@ -58,6 +58,7 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"overview" | "documents">("overview");
+  const [dbUserId, setDbUserId] = useState<string | null>(null); // Database user ID
   
   // Document creation
   const [showCreateDoc, setShowCreateDoc] = useState(false);
@@ -115,6 +116,21 @@ export default function ProjectDetailPage() {
 
   useEffect(() => {
     if (!user) return;
+
+    // Fetch current user's database ID
+    const fetchDbUserId = async () => {
+      try {
+        const response = await fetch(`/api/users/${user.id}`);
+        if (response.ok) {
+          const userData = await response.json();
+          setDbUserId(userData.id);
+        }
+      } catch (err) {
+        console.error("Failed to fetch database user ID:", err);
+      }
+    };
+
+    fetchDbUserId();
 
     const fetchProject = async () => {
       try {
@@ -252,8 +268,9 @@ export default function ProjectDetailPage() {
   const handleSaveDocument = async () => {
     if (!selectedDoc) return;
     
-    // Check if user is the creator
-    if (selectedDoc.createdBy !== user?.id) {
+    // Check if user is the creator using database user ID
+    if (!dbUserId || selectedDoc.createdBy !== dbUserId) {
+      console.log('[Document] Creator check - createdBy:', selectedDoc.createdBy, 'dbUserId:', dbUserId);
       toast.error("Only the document creator can edit this document");
       return;
     }
@@ -295,7 +312,8 @@ export default function ProjectDetailPage() {
 
   const handleDeleteDocument = async (docId: string) => {
     const doc = documents.find(d => d.id === docId);
-    if (doc && doc.createdBy !== user?.id) {
+    if (!dbUserId || (doc && doc.createdBy !== dbUserId)) {
+      console.log('[Document] Delete check - createdBy:', doc?.createdBy, 'dbUserId:', dbUserId);
       toast.error("Only the document creator can delete this document");
       return;
     }

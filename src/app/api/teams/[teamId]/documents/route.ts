@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
-const PROJECT_SERVICE_URL = process.env.PROJECT_SERVICE_URL || "http://localhost:3003";
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:4000";
 
 // GET all documents from all projects in a team
 export async function GET(
@@ -18,7 +18,7 @@ export async function GET(
     const { teamId } = await context.params;
     
     // First, get all projects for this team
-    const projectsResponse = await fetch(`${PROJECT_SERVICE_URL}/api/projects?teamId=${teamId}`, {
+    const projectsResponse = await fetch(`${API_GATEWAY_URL}/api/projects?teamId=${teamId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -46,7 +46,7 @@ export async function GET(
     const allDocuments: DocumentWithProject[] = [];
     for (const project of projects) {
       try {
-        const docsResponse = await fetch(`${PROJECT_SERVICE_URL}/api/projects/${project.id}/documents`, {
+        const docsResponse = await fetch(`${API_GATEWAY_URL}/api/projects/${project.id}/documents`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

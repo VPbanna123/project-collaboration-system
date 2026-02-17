@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { NotificationController } from '../controllers/notificationController';
-import { clerkAuth, requireAuth } from '@shared/middleware/auth';
+import { verifyInternalToken } from '@shared/middleware/internalAuth';
 
 const router = Router();
 
@@ -8,9 +8,8 @@ const router = Router();
 // This should be protected by network security in production
 router.post('/internal/send', NotificationController.sendNotification);
 
-// Protected endpoints for user-facing requests
-router.use(clerkAuth);
-router.use(requireAuth);
+// Protected endpoints for user-facing requests (via API Gateway)
+router.use(verifyInternalToken);
 
 router.get('/', NotificationController.getNotifications);
 router.get('/unread', NotificationController.getUnreadCount);

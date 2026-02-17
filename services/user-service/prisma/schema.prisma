@@ -1,5 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// User Service - Owns User data only
+// Database: user_db (port: 5432)
 
 generator client {
   provider = "prisma-client-js"
@@ -8,241 +8,36 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-// User synced from Clerk
+// User synced from Clerk - PRIMARY DATA OWNER
 model User {
   id        String   @id @default(cuid())
   clerkId   String   @unique
   email     String   @unique
   name      String?
   imageUrl  String?
+  bio       String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  // Relations
-  teamMembers     TeamMember[]
-  createdTeams    Team[]           @relation("TeamCreator")
-  assignedTasks   Task[]           @relation("TaskAssignee")
-  createdTasks    Task[]           @relation("TaskCreator")
-  comments        Comment[]
-  messages        Message[]
-  notifications   Notification[]
-  sentInvitations TeamInvitation[] @relation("InvitationSender")
 
   @@index([clerkId])
   @@index([email])
+  @@map("users")
 }
 
-// Team
-model Team {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  imageUrl    String?
-  createdById String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+// Cached user data for quick lookups (denormalized from other services)
+model UserCache {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  teamCount       Int      @default(0)
+  projectCount    Int      @default(0)
+  unreadMessages  Int      @default(0)
+  lastActivityAt  DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  createdBy   User             @relation("TeamCreator", fields: [createdById], references: [id], onDelete: Cascade)
-  members     TeamMember[]
-  projects    Project[]
-  invitations TeamInvitation[]
-
-  @@index([createdById])
-}
-
-// Team membership with roles
-model TeamMember {
-  id       String   @id @default(cuid())
-  teamId   String
-  userId   String
-  role     TeamRole @default(MEMBER)
-  joinedAt DateTime @default(now())
-
-  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([teamId, userId])
-  @@index([teamId])
   @@index([userId])
-}
-
-enum TeamRole {
-  ADMIN
-  MEMBER
-}
-
-// Team invitations
-model TeamInvitation {
-  id        String           @id @default(cuid())
-  teamId    String
-  email     String
-  role      TeamRole         @default(MEMBER)
-  status    InvitationStatus @default(PENDING)
-  invitedBy String
-  createdAt DateTime         @default(now())
-  expiresAt DateTime
-
-  team   Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  sender User @relation("InvitationSender", fields: [invitedBy], references: [id])
-
-  @@unique([teamId, email])
-  @@index([teamId])
-  @@index([email])
-}
-
-enum InvitationStatus {
-  PENDING
-  ACCEPTED
-  DECLINED
-  EXPIRED
-}
-
-// Project (Workspace)
-model Project {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  teamId      String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  team     Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  tasks    Task[]
-  messages Message[]
-
-  @@index([teamId])
-}
-
-// Task
-model Task {
-  id          String     @id @default(cuid())
-  title       String
-  description String?
-  status      TaskStatus @default(TODO)
-  priority    Priority   @default(MEDIUM)
-  projectId   String
-  assignedTo  String?
-  createdBy   String
-  dueDate     DateTime?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-
-  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  assignee User?     @relation("TaskAssignee", fields: [assignedTo], references: [id])
-  creator  User      @relation("TaskCreator", fields: [createdBy], references: [id])
-  comments Comment[]
-
-  @@index([projectId])
-  @@index([assignedTo])
-  @@index([createdBy])
-  @@index([status])
-}
-
-enum TaskStatus {
-  TODO
-  IN_PROGRESS
-  DONE
-}
-
-enum Priority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
-}
-
-// Task comments
-model Comment {
-  id        String   @id @default(cuid())
-  content   String
-  taskId    String
-  userId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([taskId])
-  @@index([userId])
-}
-
-// Chat messages
-model Message {
-  id        String   @id @default(cuid())
-  content   String
-  projectId String
-  userId    String
-  createdAt DateTime @default(now())
-
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([projectId, createdAt])
-  @@index([userId])
-}
-
-// Notifications
-model Notification {
-  id        String           @id @default(cuid())
-  type      NotificationType
-  title     String
-  message   String
-  userId    String
-  read      Boolean          @default(false)
-  link      String?
-  createdAt DateTime         @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, read])
-  @@index([createdAt])
-}
-
-enum NotificationType {
-  TASK_ASSIGNED
-  TASK_COMMENT
-  MENTION
-  TEAM_INVITATION
-}
-
-// Collaborative Document for projects
-model Document {
-  id        String   @id @default(cuid())
-  title     String
-  content   String   @default("")
-  projectId String
-  createdBy String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  edits DocumentEdit[]
-
-  @@index([projectId])
-}
-
-// Document edit history
-model DocumentEdit {
-  id         String     @id @default(cuid())
-  documentId String
-  userId     String
-  userName   String
-  content    String
-  startPos   Int
-  endPos     Int
-  action     EditAction
-  createdAt  DateTime   @default(now())
-
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-
-  @@index([documentId])
-  @@index([userId])
-}
-
-enum EditAction {
-  INSERT
-  DELETE
-  REPLACE
+  @@index([lastActivityAt])
+  @@map("user_cache")
 }

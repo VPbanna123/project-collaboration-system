@@ -1,12 +1,11 @@
 import { Router } from 'express';
 import { DocumentController } from '../controllers/documentController';
-import { clerkAuth, requireAuth } from '@shared/middleware/auth';
+import { verifyInternalToken } from '@shared/middleware/internalAuth';
 
 const router = Router();
 
-// All routes require authentication
-router.use(clerkAuth);
-router.use(requireAuth);
+// All routes require authentication from API Gateway
+router.use(verifyInternalToken);
 
 // Document routes
 router.get('/:documentId', DocumentController.getDocumentById);

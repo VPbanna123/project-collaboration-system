@@ -2,38 +2,21 @@ import { Request, Response } from 'express';
 import { NotificationService } from '../services/notificationService';
 import { asyncHandler } from '@shared/middleware/errorHandler';
 import { NotificationType } from '../../../node_modules/.prisma/notification-client';
-import { prisma } from '../lib/prisma';
 
-// Helper function to get database user ID from Clerk ID
-async function getUserIdFromClerkId(clerkId: string): Promise<string | null> {
-  const user = await prisma.user.findUnique({
-    where: { clerkId },
-    select: { id: true }
-  });
-  return user?.id || null;
-}
+// NOTE: req.user.id is already the database user ID (not Clerk ID)
+// The API Gateway converts Clerk ID to database ID before forwarding
 
 export class NotificationController {
   static getNotifications = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
+    const userId = req.user!.id; // Already database user ID from API Gateway
     const limit = parseInt((req.query.limit as string) || '20');
-    
-    const userId = await getUserIdFromClerkId(clerkId);
-    if (!userId) {
-      return res.json({ success: true, data: [] });
-    }
     
     const notifications = await NotificationService.getNotifications(userId, limit);
     res.json({ success: true, data: notifications });
   });
 
   static getUnreadCount = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
-    
-    const userId = await getUserIdFromClerkId(clerkId);
-    if (!userId) {
-      return res.json({ success: true, data: { count: 0 } });
-    }
+    const userId = req.user!.id; // Already database user ID from API Gateway
     
     const count = await NotificationService.getUnreadCount(userId);
     res.json({ success: true, data: { count } });
@@ -46,12 +29,7 @@ export class NotificationController {
   });
 
   static markAllAsRead = asyncHandler(async (req: Request, res: Response) => {
-    const clerkId = req.userId!;
-    
-    const userId = await getUserIdFromClerkId(clerkId);
-    if (!userId) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
+    const userId = req.user!.id; // Already database user ID from API Gateway
     
     await NotificationService.markAllAsRead(userId);
     res.json({ success: true, message: 'All notifications marked as read' });

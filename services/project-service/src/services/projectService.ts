@@ -2,9 +2,17 @@ import { prisma } from '../lib/prisma';
 import { CacheService } from '@shared/utils/cache';
 
 export class ProjectService {
-  static async getProjects(teamId: string) {
+  static async getProjects(teamId?: string) {
+    console.log('[ProjectService] getProjects - teamId type:', typeof teamId, 'value:', teamId);
+    
+    // Handle case where teamId might be an array (query param duplication)
+    const singleTeamId = Array.isArray(teamId) ? teamId[0] : teamId;
+    const where = singleTeamId ? { teamId: singleTeamId } : {};
+    
+    console.log('[ProjectService] getProjects - where clause:', JSON.stringify(where));
+    
     return await prisma.project.findMany({
-      where: { teamId },
+      where,
       include: {
         _count: {
           select: { tasks: true },

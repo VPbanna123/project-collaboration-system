@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
-const TEAM_SERVICE_URL = process.env.TEAM_SERVICE_URL || "http://localhost:3002";
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://localhost:3001";
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:4000";
 
 interface TeamMember {
   id: string;
@@ -43,7 +42,7 @@ export async function GET(
     const token = await getToken();
     
     // Fetch team data
-    const response = await fetch(`${TEAM_SERVICE_URL}/api/teams/${teamId}`, {
+    const response = await fetch(`${API_GATEWAY_URL}/api/teams/${teamId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -71,7 +70,7 @@ export async function GET(
       // Fetch users in parallel
       const userPromises = uniqueUserIds.map(async (uid) => {
         try {
-          const userRes = await fetch(`${USER_SERVICE_URL}/api/users/${uid}`, {
+          const userRes = await fetch(`${API_GATEWAY_URL}/api/users/${uid}`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -121,7 +120,7 @@ export async function PUT(
     const token = await getToken();
     const body = await request.json();
     
-    const response = await fetch(`${TEAM_SERVICE_URL}/api/teams/${teamId}`, {
+    const response = await fetch(`${API_GATEWAY_URL}/api/teams/${teamId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -161,7 +160,7 @@ export async function DELETE(
     const { teamId } = await params;
     const token = await getToken();
     
-    const response = await fetch(`${TEAM_SERVICE_URL}/api/teams/${teamId}`, {
+    const response = await fetch(`${API_GATEWAY_URL}/api/teams/${teamId}`, {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${token}`,

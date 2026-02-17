@@ -39,7 +39,7 @@ export class UserController {
    * Sync current user from Clerk
    */
   static syncUser = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.userId!;
+    const userId = req.user!.id;
     const user = await UserService.syncUser(userId);
 
     const response: ApiResponse<typeof user> = {
@@ -55,7 +55,7 @@ export class UserController {
    * Get current user profile
    */
   static getProfile = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.userId!;
+    const userId = req.user!.id;
     const user = await UserService.getUserByClerkId(userId);
 
     if (!user) {
@@ -76,7 +76,7 @@ export class UserController {
    * Update current user profile
    */
   static updateProfile = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.userId!;
+    const userId = req.user!.id;
     const { name, imageUrl } = req.body;
 
     const user = await UserService.updateUser(userId, { name, imageUrl });
@@ -95,6 +95,27 @@ export class UserController {
   static getUserById = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const user = await UserService.getUserById(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      data: user,
+    });
+  });
+
+  /**
+   * GET /api/users/clerk/:clerkId
+   * Get user by Clerk ID (internal endpoint for API Gateway)
+   */
+  static getUserByClerkIdRoute = asyncHandler(async (req: Request, res: Response) => {
+    const { clerkId } = req.params;
+    const user = await UserService.getUserByClerkId(clerkId);
 
     if (!user) {
       return res.status(404).json({

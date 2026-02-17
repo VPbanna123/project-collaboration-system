@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
-const CHAT_SERVICE_URL = process.env.CHAT_SERVICE_URL || "http://localhost:3004";
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:4000";
 
 // GET team chat messages
 export async function GET(
@@ -18,7 +18,7 @@ export async function GET(
     const { teamId } = await params;
     
     const response = await fetch(
-      `${CHAT_SERVICE_URL}/api/teams/${teamId}/messages`,
+      `${API_GATEWAY_URL}/api/teams/${teamId}/messages`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -53,7 +53,7 @@ export async function POST(
     const body = await request.json();
     
     const response = await fetch(
-      `${CHAT_SERVICE_URL}/api/teams/${teamId}/messages`,
+      `${API_GATEWAY_URL}/api/teams/${teamId}/messages`,
       {
         method: "POST",
         headers: {
