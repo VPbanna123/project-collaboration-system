@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-// import { TeamChatService } from '../services/teamChatService';
 import { TeamChatService } from '../services/teamChatService';
 import { asyncHandler } from '@shared/middleware/errorHandler';
+import { io } from '../index';
 
 export class TeamChatController {
   /**
@@ -46,6 +46,9 @@ export class TeamChatController {
       content || '',
       { fileUrl, fileName, fileType, fileSize, documentId }
     );
+    
+    // Emit socket event for real-time updates
+    io.to(`team:${teamId}`).emit('team:message:new', { message });
     
     res.status(201).json({
       success: true,

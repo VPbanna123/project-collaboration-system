@@ -53,6 +53,18 @@ export function setupSocketHandlers(io: Server) {
       console.log(`Socket ${socket.id} left conversation:${conversationId}`);
     });
 
+    // Join team room (for team chat)
+    socket.on('join:team', (teamId: string) => {
+      socket.join(`team:${teamId}`);
+      console.log(`Socket ${socket.id} joined team:${teamId}`);
+    });
+
+    // Leave team room
+    socket.on('leave:team', (teamId: string) => {
+      socket.leave(`team:${teamId}`);
+      console.log(`Socket ${socket.id} left team:${teamId}`);
+    });
+
     // Send project message
     socket.on('message:send', async (data: {
       content: string;
@@ -74,7 +86,10 @@ export function setupSocketHandlers(io: Server) {
       }
     });
 
-    // Send direct message
+    // DEPRECATED: Direct message sending via socket - use REST API instead
+    // The REST API properly handles authentication via API Gateway and emits socket events
+    // Keeping this commented out to avoid Clerk ID vs database ID mismatch errors
+    /*
     socket.on('dm:send', async (data: {
       content: string;
       conversationId: string;
@@ -102,6 +117,7 @@ export function setupSocketHandlers(io: Server) {
         socket.emit('error', { message: 'Failed to send direct message' });
       }
     });
+    */
 
     // Mark messages as read
     socket.on('dm:read', async (data: {

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { ConversationService } from '../services/conversationService';
 import { asyncHandler } from '@shared/middleware/errorHandler';
+import { io } from '../index';
 
 export class ConversationController {
   /**
@@ -108,6 +109,18 @@ export class ConversationController {
       content?.trim() || '',
       { fileUrl, fileName, fileType, fileSize }
     );
+    
+    // Emit socket event for real-time updates
+    // Send to conversation room (for active participants)
+    io.to(`conversation:${conversationId}`).emit('dm:new', { message });
+    
+    // TODO: Fix personal room notification - receiverId is database ID but socket rooms use Clerk IDs
+    // Need to either:
+    // 1. Store Clerk IDs in conversation table, OR
+    // 2. Look up Clerk ID from database ID before emitting
+    // const conversation = await ConversationService.getConversationById(conversationId, userId);
+    // const receiverId = conversation.participant1 === userId ? conversation.participant2 : conversation.participant1;
+    // io.to(`user:${receiverId}`).emit('dm:notification', { message, conversation });
     
     res.status(201).json({
       success: true,

@@ -49,6 +49,22 @@ interface DirectMessage {
   sender?: User;
 }
 
+interface TeamMessage {
+  id: string;
+  content: string;
+  senderId: string;
+  senderClerkId?: string;
+  chatId: string;
+  teamId?: string;
+  createdAt: string;
+  sender?: User;
+  fileUrl?: string;
+  fileName?: string;
+  fileType?: string;
+  fileSize?: number;
+  documentId?: string;
+}
+
 interface Project {
   id: string;
   name: string;
@@ -86,6 +102,9 @@ export function ChatClient({ initialMessages, projects, currentUserId }: ChatCli
   const router = useRouter();
   const safeProjects = Array.isArray(projects) ? projects : [];
   
+  // Current user's database ID (for message comparison)
+  const [currentUserDbId, setCurrentUserDbId] = useState<string | null>(null);
+  
   // Socket state
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -105,6 +124,8 @@ export function ChatClient({ initialMessages, projects, currentUserId }: ChatCli
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [teamMessages, setTeamMessages] = useState<TeamMessage[]>([]);
+  const [loadingTeamMessages, setLoadingTeamMessages] = useState(false);
   
   // User search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -125,6 +146,10 @@ export function ChatClient({ initialMessages, projects, currentUserId }: ChatCli
   // Typing indicators
   const [typingUsers, setTypingUsers] = useState<Map<string, string>>(new Map());
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Refs to track current selected items (for Socket.IO listeners to avoid stale closures)
+  const selectedConversationRef = useRef<Conversation | null>(null);
+  const selectedTeamRef = useRef<Team | null>(null);
   
   // Online users
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
@@ -174,7 +199,8 @@ export function ChatClient({ initialMessages, projects, currentUserId }: ChatCli
     // Handle incoming direct messages
     newSocket.on("dm:new", (data: { message: DirectMessage }) => {
       console.log("Received new DM:", data);
-      if (selectedConversation?.id === data.message.conversationId) {
+      // Use ref to get current conversation (avoids stale closure)
+      if (selectedConversationRef.current?.id === data.message.conversationId) {
         setDirectMessages((prev) => [...prev, data.message]);
         scrollToBottom();
         // Mark as read
@@ -216,6 +242,17 @@ export function ChatClient({ initialMessages, projects, currentUserId }: ChatCli
       });
     });
 
+    // Handle incoming team messages
+    newSocket.on("team:message:new", (data: { message: TeamMessage }) => {
+      console.log("Received new team message:", data);
+      // Use ref to get current team (avoids stale closure)
+      if (selectedTeamRef.current?.id === data.message.teamId) {
+        setTeamMessages((prev) => [...prev, data.message]);
+        scrollToBottom();
+      }
+      // Could add toast notification for messages in other teams
+    });
+
     // Handle users online check response
     newSocket.on("users:online:status", (data: { onlineUsers: string[] }) => {
       setOnlineUsers(new Set(data.onlineUsers));
@@ -228,12 +265,47 @@ export function ChatClient({ initialMessages, projects, currentUserId }: ChatCli
     };
   }, [currentUserId, scrollToBottom]);
 
+  // Load messages for a team
+  const loadTeamMessages = useCallback(async (teamId: string) => {
+    setLoadingTeamMessages(true);
+    try {
+      const response = await fetch(`/api/chat/teams/${teamId}/messages`);
+      if (response.ok) {
+        const data = await response.json();
+        setTeamMessages(data.data || []);
+        scrollToBottom();
+      }
+    } catch (error) {
+      console.error("Failed to load team messages:", error);
+      toast.error("Failed to load team messages");
+    } finally {
+      setLoadingTeamMessages(false);
+    }
+  }, [scrollToBottom]);
+
+  // Sync refs with state to avoid stale closures in socket listeners
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversation;
+  }, [selectedConversation]);
+
+  useEffect(() => {
+    selectedTeamRef.current = selectedTeam;
+  }, [selectedTeam]);
+
   // Join conversation room when selected
   useEffect(() => {
     if (socket && isConnected && selectedConversation) {
-      socket.emit("join:conversation", { conversationId: selectedConversation.id });
+      socket.emit("join:conversation", selectedConversation.id);
     }
   }, [socket, isConnected, selectedConversation]);
+
+  // Join team room and load messages when team selected
+  useEffect(() => {
+    if (socket && isConnected && selectedTeam) {
+      socket.emit("join:team", selectedTeam.id);
+      loadTeamMessages(selectedTeam.id);
+    }
+  }, [socket, isConnected, selectedTeam, loadTeamMessages]);
 
   // Load conversations
   const loadConversations = useCallback(async () => {
@@ -269,6 +341,22 @@ export function ChatClient({ initialMessages, projects, currentUserId }: ChatCli
     }
   }, []);
 
+  // Fetch current user's database ID
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await fetch(`/api/users/${currentUserId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setCurrentUserDbId(data.id);
+        }
+      } catch (error) {
+        console.error('Failed to fetch current user:', error);
+      }
+    };
+    fetchCurrentUser();
+  }, [currentUserId]);
+
   // Initial data load
   useEffect(() => {
     loadConversations();
@@ -278,7 +366,7 @@ export function ChatClient({ initialMessages, projects, currentUserId }: ChatCli
   // Auto-scroll on new messages
   useEffect(() => {
     scrollToBottom();
-  }, [directMessages, messages, scrollToBottom]);
+  }, [directMessages, messages, teamMessages, scrollToBottom]);
 
   // Load messages for a conversation
   const loadDirectMessages = async (conversationId: string) => {
@@ -460,16 +548,7 @@ export function ChatClient({ initialMessages, projects, currentUserId }: ChatCli
 
     setIsSending(true);
     try {
-      // Emit via socket for real-time
-      if (socket && isConnected) {
-        socket.emit("dm:send", {
-          conversationId: selectedConversation.id,
-          senderId: currentUserId,
-          content: newMessage.trim(),
-        });
-      }
-
-      // Also send via API as backup
+      // Send via REST API - server will emit socket event for real-time updates
       const response = await fetch(`/api/chat/conversations/${selectedConversation.id}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -478,7 +557,7 @@ export function ChatClient({ initialMessages, projects, currentUserId }: ChatCli
 
       if (response.ok) {
         const data = await response.json();
-        // Only add if not already added by socket
+        // Server emits socket event, but add locally as fallback
         setDirectMessages((prev) => {
           if (!prev.find((m) => m.id === data.data.id)) {
             return [...prev, data.data];
@@ -487,6 +566,8 @@ export function ChatClient({ initialMessages, projects, currentUserId }: ChatCli
         });
         setNewMessage("");
         scrollToBottom();
+      } else {
+        toast.error("Failed to send message");
       }
     } catch (error) {
       console.error("Failed to send message:", error);
@@ -518,6 +599,32 @@ export function ChatClient({ initialMessages, projects, currentUserId }: ChatCli
           isTyping: false,
         });
       }, 2000);
+    }
+  };
+
+  // Send team message
+  const sendTeamMessage = async () => {
+    if (!newMessage.trim() || !selectedTeam) return;
+
+    setIsSending(true);
+    try {
+      const response = await fetch(`/api/chat/teams/${selectedTeam.id}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: newMessage.trim() }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTeamMessages((prev) => [...prev, data.data]);
+        setNewMessage("");
+        scrollToBottom();
+      }
+    } catch (error) {
+      console.error("Failed to send team message:", error);
+      toast.error("Failed to send team message");
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -571,6 +678,8 @@ export function ChatClient({ initialMessages, projects, currentUserId }: ChatCli
     e.preventDefault();
     if (chatMode === "direct") {
       sendDirectMessage();
+    } else if (chatMode === "team") {
+      sendTeamMessage();
     } else {
       sendProjectMessage();
     }
@@ -1055,13 +1164,52 @@ export function ChatClient({ initialMessages, projects, currentUserId }: ChatCli
                     Select a team to start group chat
                   </p>
                 </div>
-              ) : (
+              ) : loadingTeamMessages ? (
                 <div className="text-center py-12">
-                  <p className="text-gray-500">Team group chat coming soon! 🚀</p>
-                  <p className="text-sm text-gray-400 mt-2">
-                    Real-time team messaging will be available here
-                  </p>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="text-gray-500 mt-2">Loading messages...</p>
                 </div>
+              ) : teamMessages.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500">No messages yet. Start the conversation! 🚀</p>
+                </div>
+              ) : (
+                teamMessages.map((message) => {
+                  const isCurrentUser = message.senderId === currentUserDbId;
+                  return (
+                    <div
+                      key={message.id}
+                      className={`flex ${isCurrentUser ? "justify-end" : "justify-start"}`}
+                    >
+                      <div className={`max-w-xs lg:max-w-md xl:max-w-lg`}>
+                        <div
+                          className={`rounded-2xl px-4 py-2 ${
+                            isCurrentUser
+                              ? "bg-blue-600 text-white"
+                              : "bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700"
+                          }`}
+                        >
+                          {!isCurrentUser && (
+                            <p className="text-xs font-semibold mb-1 opacity-70">
+                              {message.sender?.name || "Unknown"}
+                            </p>
+                          )}
+                          <p className="text-sm">{message.content}</p>
+                        </div>
+                        <div
+                          className={`text-xs mt-1 ${
+                            isCurrentUser ? "text-right" : "text-left"
+                          } text-gray-500`}
+                        >
+                          {new Date(message.createdAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
               )}
               <div ref={messagesEndRef} />
             </div>
@@ -1143,7 +1291,7 @@ export function ChatClient({ initialMessages, projects, currentUserId }: ChatCli
                 </div>
               ) : (
                 directMessages.map((message) => {
-                  const isCurrentUser = message.senderId === currentUserId;
+                  const isCurrentUser = message.senderId === currentUserDbId;
                   return (
                     <div
                       key={message.id}
@@ -1238,7 +1386,7 @@ export function ChatClient({ initialMessages, projects, currentUserId }: ChatCli
                 </div>
               ) : (
                 messages.map((message) => {
-                  const isCurrentUser = message.userId === currentUserId;
+                  const isCurrentUser = message.userId === currentUserDbId;
                   return (
                     <div
                       key={message.id}
