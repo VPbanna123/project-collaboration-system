@@ -13,6 +13,7 @@
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
     "@socket.io/redis-adapter": "^8.3.0",
+    "axios": "^1.13.5",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^4.18.2",

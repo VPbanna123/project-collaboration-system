@@ -17,7 +17,7 @@ export async function POST(
     const token = await getToken();
     const { conversationId } = await context.params;
     
-    const response = await fetch(`${API_GATEWAY_URL}/api/conversations/${conversationId}/read`, {
+    const response = await fetch(`${API_GATEWAY_URL}/api/chat/conversations/${conversationId}/read`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,

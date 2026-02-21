@@ -7,7 +7,7 @@
     "baseUrl": "./",
     "paths": {
       "@shared/*": ["../shared/*"],
-      "@generated/prisma": ["../../src/generated/prisma"]
+      "@generated/prisma": ["./src/generated/prisma"]
     },
     "strict": true,
     "esModuleInterop": true,

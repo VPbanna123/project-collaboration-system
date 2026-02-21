@@ -171,4 +171,12 @@ export class TeamController {
     await TeamService.declineInvitation(invitationId, email);
     res.json({ success: true, message: 'Invitation declined' });
   });
+
+  // Internal endpoint: Check if user is a team member
+  static checkMembership = asyncHandler(async (req: Request, res: Response) => {
+    const { teamId, userId } = req.params;
+
+    const isMember = await TeamService.isUserInTeam(teamId, userId);
+    res.json({ success: true, isMember });
+  });
 }

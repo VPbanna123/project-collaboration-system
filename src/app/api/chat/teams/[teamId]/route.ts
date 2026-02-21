@@ -18,7 +18,7 @@ export async function GET(
     const { teamId } = await params;
     
     const response = await fetch(
-      `${API_GATEWAY_URL}/api/teams/${teamId}/messages`,
+      `${API_GATEWAY_URL}/api/chat/teams/${teamId}/messages`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -53,7 +53,7 @@ export async function POST(
     const body = await request.json();
     
     const response = await fetch(
-      `${API_GATEWAY_URL}/api/teams/${teamId}/messages`,
+      `${API_GATEWAY_URL}/api/chat/teams/${teamId}/messages`,
       {
         method: "POST",
         headers: {

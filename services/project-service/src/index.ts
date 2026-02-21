@@ -19,7 +19,6 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/projects', projectRoutes);
-app.use('/api/tasks', taskRoutes);
 app.use('/api/documents', documentRoutes);
 
 app.use(errorHandler);

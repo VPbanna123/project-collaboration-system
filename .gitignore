@@ -120,3 +120,8 @@ TERMINAL_COMMANDS.txt
 .ssh
 .credentials
 secrets.json
+src/proxy.ts
+start-services-vscode.sh
+stop-services.sh
+view-logs.sh
+.vscode/

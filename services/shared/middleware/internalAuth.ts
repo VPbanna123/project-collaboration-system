@@ -90,9 +90,31 @@ export function trustGatewayHeaders(
   next();
 }
 
+/**
+ * Verify internal API key for service-to-service communication
+ * Does not require user context - used for internal endpoints
+ */
+export function verifyInternalApiKey(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  const apiKey = req.headers['x-internal-api-key'] as string;
+  const expectedKey = process.env.INTERNAL_API_KEY;
+
+  if (!apiKey || !expectedKey || apiKey !== expectedKey) {
+    return res.status(401).json({ 
+      error: 'Unauthorized - Invalid internal API key' 
+    });
+  }
+
+  next();
+}
+
 export const internalAuth = {
   verifyInternalToken,
   trustGatewayHeaders,
+  verifyInternalApiKey,
 };
 
 export default internalAuth;

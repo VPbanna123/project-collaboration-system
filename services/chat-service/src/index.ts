@@ -8,6 +8,7 @@ import { createClient } from 'redis';
 import messageRoutes from './routes/messageRoutes';
 import conversationRoutes from './routes/conversationRoutes';
 import teamChatRoutes from './routes/teamChatRoutes';
+import userRoutes from './routes/userRoutes';
 import { errorHandler } from '@shared/middleware/errorHandler';
 import { setupSocketHandlers } from './sockets/chatSocket';
 
@@ -53,10 +54,11 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'chat-service' });
 });
 
-// API Routes
-app.use('/api/messages', messageRoutes);
-app.use('/api/conversations', conversationRoutes);
-app.use('/api/teams', teamChatRoutes);
+// API Routes - mounted under /api/chat to match gateway routing
+app.use('/api/chat/messages', messageRoutes);
+app.use('/api/chat/conversations', conversationRoutes);
+app.use('/api/chat/teams', teamChatRoutes);
+app.use('/api/chat/users', userRoutes);
 
 app.use(errorHandler);
 

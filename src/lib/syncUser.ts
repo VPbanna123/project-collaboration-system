@@ -16,14 +16,14 @@ export async function syncUser() {
       if (cachedUser) {
         return JSON.parse(cachedUser);
       }
-    } catch (cacheError) {
+    } catch {
       console.log('Redis cache error, continuing without cache');
     }
 
     // 2. Try to get from user-service database first
     try {
       const token = await getToken();
-      const dbResponse = await fetch(`${API_GATEWAY_URL}/api/users/${userId}`, {
+      const dbResponse = await fetch(`${API_GATEWAY_URL}/api/users/clerk/${userId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -38,7 +38,7 @@ export async function syncUser() {
         } catch {}
         return user;
       }
-    } catch (error) {
+    } catch {
       console.log('User not found in database, will try Clerk');
     }
 
@@ -47,9 +47,21 @@ export async function syncUser() {
     try {
       const client = await clerkClient();
       clerkUser = await client.users.getUser(userId);
-    } catch (clerkError) {
-      console.error('Clerk API error:', clerkError);
+    } catch (clerkError: unknown) {
+      console.error('==================== CLERK API ERROR ====================');
+      const errorObj = clerkError as Record<string, unknown>;
+      console.error('Error details:', {
+        message: errorObj?.message,
+        status: errorObj?.status,
+        code: errorObj?.code,
+        errors: errorObj?.errors,
+        clerkTraceId: errorObj?.clerkTraceId,
+      });
+      console.error('Full error object:', JSON.stringify(clerkError, null, 2));
       console.error('Failed to get user from Clerk for userId:', userId);
+      console.error('CLERK_SECRET_KEY exists:', !!process.env.CLERK_SECRET_KEY);
+      console.error('CLERK_SECRET_KEY length:', process.env.CLERK_SECRET_KEY?.length);
+      console.error('========================================================');
       // Return null so app knows there's an auth issue
       return null;
     }

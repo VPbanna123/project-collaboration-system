@@ -75,6 +75,7 @@ async function verifyClerkAndIssueInternalToken(
     // This uses JWKS and is much faster than the full SDK
     const payload = await verifyToken(clerkToken, {
       secretKey: process.env.CLERK_SECRET_KEY!,
+      clockSkewInMs: 120000, // ⬅ allow 2 minutes clock skew
     }) as ClerkJWTPayload;
 
     if (!payload || !payload.sub) {
@@ -177,6 +178,11 @@ app.use('/api/projects', verifyClerkAndIssueInternalToken, (req: Request, res: R
   proxyToService('projects', req, res);
 });
 
+// Document routes → Project Service
+app.use('/api/documents', verifyClerkAndIssueInternalToken, (req: Request, res: Response) => {
+  proxyToService('documents', req, res);
+});
+
 // Chat routes → Chat Service
 app.use('/api/chat', verifyClerkAndIssueInternalToken, (req: Request, res: Response) => {
   proxyToService('chat', req, res);
@@ -200,6 +206,7 @@ async function proxyToService(
       'users': process.env.USER_SERVICE_URL || 'http://localhost:3001',
       'teams': process.env.TEAM_SERVICE_URL || 'http://localhost:3002',
       'projects': process.env.PROJECT_SERVICE_URL || 'http://localhost:3003',
+      'documents': process.env.PROJECT_SERVICE_URL || 'http://localhost:3003', // Documents are in project service
       'chat': process.env.CHAT_SERVICE_URL || 'http://localhost:3004',
       'notifications': process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3005',
     };
@@ -212,8 +219,9 @@ async function proxyToService(
 
     // Parse URL to separate path and query string
     const urlObj = new URL(req.originalUrl, 'http://localhost');
-    const pathWithoutQuery = urlObj.pathname.replace(`/api/${serviceName}`, '');
-    const fullUrl = `${serviceUrl}/api/${serviceName}${pathWithoutQuery}`;
+    // For services, send the full path as-is (don't strip service name)
+    // Services expect their routes at their specific paths
+    const fullUrl = `${serviceUrl}${urlObj.pathname}`;
 
     console.log(`[Gateway] Proxying ${req.method} ${req.originalUrl} → ${fullUrl}`);
 

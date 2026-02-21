@@ -624,4 +624,20 @@ export class TeamService {
       // Don't throw - invitation was created, notification is optional
     }
   }
+
+  /**
+   * Check if user is a member of a team (internal use)
+   */
+  static async isUserInTeam(teamId: string, userId: string): Promise<boolean> {
+    const member = await prisma.teamMember.findUnique({
+      where: {
+        teamId_userId: {
+          teamId,
+          userId,
+        },
+      },
+    });
+
+    return member !== null;
+  }
 }

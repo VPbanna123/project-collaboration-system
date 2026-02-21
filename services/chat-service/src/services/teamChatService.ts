@@ -41,17 +41,6 @@ export class TeamChatService {
         cursor: { id: cursor },
         skip: 1,
       }),
-      include: {
-        sender: {
-          select: {
-            id: true,
-            clerkId: true,
-            name: true,
-            email: true,
-            imageUrl: true,
-          },
-        },
-      },
     });
 
     const hasMore = messages.length > limit;
@@ -73,24 +62,6 @@ export class TeamChatService {
     content: string,
     attachment?: MessageAttachment
   ) {
-    // Verify team exists and user is a member
-    const team = await prisma.team.findUnique({
-      where: { id: teamId },
-      include: {
-        members: {
-          where: { userId: senderId },
-        },
-      },
-    });
-
-    if (!team) {
-      throw new AppError('Team not found', 404);
-    }
-
-    if (team.members.length === 0) {
-      throw new AppError('You are not a member of this team', 403);
-    }
-
     // Get or create team chat
     const teamChat = await this.getOrCreateTeamChat(teamId);
 
@@ -105,17 +76,6 @@ export class TeamChatService {
         fileType: attachment?.fileType,
         fileSize: attachment?.fileSize,
         documentId: attachment?.documentId,
-      },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            clerkId: true,
-            name: true,
-            email: true,
-            imageUrl: true,
-          },
-        },
       },
     });
 
@@ -140,17 +100,6 @@ export class TeamChatService {
         documentId: { not: null },
       },
       orderBy: { createdAt: 'desc' },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            clerkId: true,
-            name: true,
-            email: true,
-            imageUrl: true,
-          },
-        },
-      },
     });
 
     return messages;

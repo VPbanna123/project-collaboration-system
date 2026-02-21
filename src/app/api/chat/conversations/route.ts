@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
     const token = await getToken();
     
-    const response = await fetch(`${API_GATEWAY_URL}/api/conversations`, {
+    const response = await fetch(`${API_GATEWAY_URL}/api/chat/conversations`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     const token = await getToken();
     const body = await request.json();
     
-    const response = await fetch(`${API_GATEWAY_URL}/api/conversations/start`, {
+    const response = await fetch(`${API_GATEWAY_URL}/api/chat/conversations/start`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

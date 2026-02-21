@@ -56,7 +56,7 @@ export class UserController {
    */
   static getProfile = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
-    const user = await UserService.getUserByClerkId(userId);
+    const user = await UserService.getUserById(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -77,9 +77,10 @@ export class UserController {
    */
   static updateProfile = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
+    const clerkId = req.user!.clerkId;
     const { name, imageUrl } = req.body;
 
-    const user = await UserService.updateUser(userId, { name, imageUrl });
+    const user = await UserService.updateUser(clerkId, { name, imageUrl });
 
     res.json({
       success: true,

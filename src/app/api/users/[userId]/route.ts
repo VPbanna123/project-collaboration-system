@@ -17,7 +17,7 @@ export async function GET(
     const token = await getToken();
     const { userId } = await context.params;
     
-    const response = await fetch(`${API_GATEWAY_URL}/api/users/${userId}`, {
+    const response = await fetch(`${API_GATEWAY_URL}/api/users/clerk/${userId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

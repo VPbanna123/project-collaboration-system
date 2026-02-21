@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import teamRoutes from './routes/teamRoutes';
+import internalRoutes from './routes/internalRoutes';
 import { errorHandler } from '@shared/middleware/errorHandler';
 
 dotenv.config();
@@ -34,6 +35,7 @@ app.get('/health', (req, res) => {
 
 // Routes
 app.use('/api/teams', teamRoutes);
+app.use('/api/teams', internalRoutes); // Internal routes
 
 // Error handler
 app.use(errorHandler);

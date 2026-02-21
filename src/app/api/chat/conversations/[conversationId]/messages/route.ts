@@ -20,7 +20,7 @@ export async function GET(
     const cursor = searchParams.get("cursor");
     const limit = searchParams.get("limit");
     
-    let url = `${API_GATEWAY_URL}/api/conversations/${conversationId}/messages`;
+    let url = `${API_GATEWAY_URL}/api/chat/conversations/${conversationId}/messages`;
     const params = new URLSearchParams();
     if (cursor) params.append("cursor", cursor);
     if (limit) params.append("limit", limit);
@@ -55,7 +55,7 @@ export async function POST(
     const { conversationId } = await context.params;
     const body = await request.json();
     
-    const response = await fetch(`${API_GATEWAY_URL}/api/conversations/${conversationId}/messages`, {
+    const response = await fetch(`${API_GATEWAY_URL}/api/chat/conversations/${conversationId}/messages`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

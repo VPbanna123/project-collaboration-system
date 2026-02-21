@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { AppError } from '@shared/middleware/errorHandler';
 import { EditAction } from '../generated/prisma';
+import axios from 'axios';
 
 export class DocumentService {
   /**
@@ -83,10 +84,42 @@ export class DocumentService {
 
     console.log('[DocumentService] Update check - Document createdBy:', document.createdBy, 'Request userId:', userId);
 
-    // Only creator can edit the document
-    if (document.createdBy !== userId) {
+    // Check if user has permission to edit
+    // User can edit if:
+    // 1. They are the creator, OR
+    // 2. They are a member of the project's team (checked via team service)
+    let canEdit = document.createdBy === userId;
+    
+    if (!canEdit && document.projectId) {
+      // Get the project to check team membership
+      const project = await prisma.project.findUnique({
+        where: { id: document.projectId },
+      });
+      
+      if (project?.teamId) {
+        // Check if user is a team member via team service
+        try {
+          const teamServiceUrl = process.env.TEAM_SERVICE_URL || 'http://localhost:3002';
+          const response = await axios.get(
+            `${teamServiceUrl}/api/teams/${project.teamId}/check-member/${userId}`,
+            {
+              headers: {
+                'x-internal-api-key': process.env.INTERNAL_API_KEY,
+              },
+            }
+          );
+          canEdit = response.data?.isMember === true;
+          console.log('[DocumentService] Team member check - isMember:', canEdit, 'userId:', userId);
+        } catch (error) {
+          console.error('[DocumentService] Failed to check team membership:', error);
+          // If team service is down, only allow creator to edit
+        }
+      }
+    }
+
+    if (!canEdit) {
       console.error('[DocumentService] Access denied - createdBy:', document.createdBy, 'userId:', userId);
-      throw new AppError('Only the document creator can edit it', 403);
+      throw new AppError('You do not have permission to edit this document', 403);
     }
 
     // Update document and create edit record in transaction

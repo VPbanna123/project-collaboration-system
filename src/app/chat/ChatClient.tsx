@@ -158,7 +158,7 @@ export function ChatClient({ initialMessages, projects, currentUserId }: ChatCli
       setIsConnected(true);
       
       // Register user as online
-      newSocket.emit("user:online", { clerkId: currentUserId });
+      newSocket.emit("user:online", currentUserId);
     });
 
     newSocket.on("disconnect", () => {
@@ -396,7 +396,7 @@ export function ChatClient({ initialMessages, projects, currentUserId }: ChatCli
       const response = await fetch("/api/chat/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ otherUserId: otherUser.clerkId }),
+        body: JSON.stringify({ otherUserId: otherUser.id }),
       });
 
       if (response.ok) {

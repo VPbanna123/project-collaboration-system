@@ -117,13 +117,14 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     if (!user) return;
 
-    // Fetch current user's database ID
+    // Fetch current user's database ID using Clerk ID
     const fetchDbUserId = async () => {
       try {
         const response = await fetch(`/api/users/${user.id}`);
         if (response.ok) {
           const userData = await response.json();
-          setDbUserId(userData.id);
+          setDbUserId(userData.id || userData.data?.id);
+          console.log('[Document] Fetched dbUserId:', userData.id || userData.data?.id);
         }
       } catch (err) {
         console.error("Failed to fetch database user ID:", err);
@@ -268,10 +269,16 @@ export default function ProjectDetailPage() {
   const handleSaveDocument = async () => {
     if (!selectedDoc) return;
     
-    // Check if user is the creator using database user ID
-    if (!dbUserId || selectedDoc.createdBy !== dbUserId) {
-      console.log('[Document] Creator check - createdBy:', selectedDoc.createdBy, 'dbUserId:', dbUserId);
-      toast.error("Only the document creator can edit this document");
+    // Check if user has permission to edit
+    // User can edit if they are the creator or a team member
+    const canEdit = dbUserId && (
+      selectedDoc.createdBy === dbUserId ||
+      (project?.team && project.team.id) // If project has a team, all team members can edit
+    );
+    
+    if (!canEdit) {
+      console.log('[Document] Permission check - createdBy:', selectedDoc.createdBy, 'dbUserId:', dbUserId, 'hasTeam:', !!project?.team);
+      toast.error("You don't have permission to edit this document");
       return;
     }
     
@@ -674,13 +681,13 @@ export default function ProjectDetailPage() {
                               <span className="text-xs text-gray-600 dark:text-gray-400">
                                 {doc.creator.name || doc.creator.email}
                               </span>
-                              {doc.createdBy === user?.id && (
+                              {doc.createdBy === dbUserId && (
                                 <span className="text-xs text-blue-600 dark:text-blue-400">• You</span>
                               )}
                             </div>
                           )}
                         </div>
-                        {doc.createdBy === user?.id && (
+                        {doc.createdBy === dbUserId && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -724,11 +731,11 @@ export default function ProjectDetailPage() {
                           )}
                           <span className="text-sm text-gray-600 dark:text-gray-400">
                             Created by {selectedDoc.creator.name || selectedDoc.creator.email}
-                            {selectedDoc.createdBy === user?.id && <span className="text-blue-600 dark:text-blue-400"> (You)</span>}
+                            {selectedDoc.createdBy === dbUserId && <span className="text-blue-600 dark:text-blue-400"> (You)</span>}
                           </span>
                         </div>
                       )}
-                      {selectedDoc.createdBy !== user?.id && (
+                      {dbUserId && selectedDoc.createdBy !== dbUserId && (
                         <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
                           🔒 Read-only: Only the creator can edit this document
                         </p>
@@ -745,7 +752,7 @@ export default function ProjectDetailPage() {
                       >
                         History
                       </button>
-                      {selectedDoc.createdBy === user?.id && (
+                      {selectedDoc.createdBy === dbUserId && (
                         <button
                           onClick={handleSaveDocument}
                           disabled={saving}
@@ -799,9 +806,9 @@ export default function ProjectDetailPage() {
                     <textarea
                       value={editContent}
                       onChange={(e) => setEditContent(e.target.value)}
-                      disabled={selectedDoc.createdBy !== user?.id}
+                      disabled={selectedDoc.createdBy !== dbUserId}
                       className="w-full h-[400px] px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm resize-none disabled:opacity-60 disabled:cursor-not-allowed"
-                      placeholder={selectedDoc.createdBy !== user?.id ? "This document is read-only" : "Start writing..."}
+                      placeholder={selectedDoc.createdBy !== dbUserId ? "This document is read-only" : "Start writing..."}
                     />
                   )}
                 </>
