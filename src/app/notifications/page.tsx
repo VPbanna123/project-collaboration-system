@@ -20,7 +20,8 @@ export default async function NotificationsPage() {
       notificationApi.getUnreadCount().catch(() => ({ count: 0 })),
     ]);
     notifications = Array.isArray(results[0]) ? results[0] : [];
-    unreadCount = (results[1] && typeof results[1].count === 'number') ? results[1].count : 0;
+    const countResult = results[1] as { count?: number };
+    unreadCount = (countResult && typeof countResult.count === 'number') ? countResult.count : 0;
   } catch (error) {
     console.error("Failed to fetch notifications:", error);
     notifications = [];

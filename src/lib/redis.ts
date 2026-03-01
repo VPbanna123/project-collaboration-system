@@ -1,10 +1,9 @@
 import { Redis } from 'ioredis';
 
 const getRedisUrl = () => {
-    if (process.env.REDIS_URL) {
-        return process.env.REDIS_URL;
-    }
-    throw new Error('REDIS_URL is not defined');
+    // REDIS_URL should be provided as environment variable
+    // Default to localhost for development
+    return process.env.REDIS_URL || 'redis://localhost:6379';
 };
 
 const redis = new Redis(getRedisUrl(), {
@@ -13,6 +12,7 @@ const redis = new Redis(getRedisUrl(), {
         const delay = Math.min(times * 50, 2000);
         return delay;
     },
+    lazyConnect: true, // Don't connect immediately, only when needed
 });
 
 redis.on('error', (error) => {

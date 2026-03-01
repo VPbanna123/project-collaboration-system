@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { CacheService } from '@shared/utils/cache';
 import { AppError } from '@shared/middleware/errorHandler';
-import { TeamRole } from '../../../node_modules/.prisma/team-client';
+import { TeamRole } from '../generated/prisma';
 import { EmailService } from './emailService';
 
 export class TeamService {
@@ -639,5 +639,21 @@ export class TeamService {
     });
 
     return member !== null;
+  }
+
+  /**
+   * Check if user is an admin of a team
+   */
+  static async isUserAdmin(teamId: string, userId: string): Promise<boolean> {
+    const member = await prisma.teamMember.findUnique({
+      where: {
+        teamId_userId: {
+          teamId,
+          userId,
+        },
+      },
+    });
+
+    return member !== null && member.role === TeamRole.ADMIN;
   }
 }

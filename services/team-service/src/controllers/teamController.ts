@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { TeamService } from '../services/teamService';
 import { asyncHandler } from '@shared/middleware/errorHandler';
-import { TeamRole } from '../../../node_modules/.prisma/team-client';
+import { TeamRole } from '../generated/prisma';
 
 // NOTE: req.user.id is already the database user ID (not Clerk ID)
 // The API Gateway converts Clerk ID to database ID before forwarding
@@ -178,5 +178,13 @@ export class TeamController {
 
     const isMember = await TeamService.isUserInTeam(teamId, userId);
     res.json({ success: true, isMember });
+  });
+
+  // Internal endpoint: Check if user is a team admin
+  static checkAdminStatus = asyncHandler(async (req: Request, res: Response) => {
+    const { teamId, userId } = req.params;
+
+    const isAdmin = await TeamService.isUserAdmin(teamId, userId);
+    res.json({ success: true, isAdmin });
   });
 }

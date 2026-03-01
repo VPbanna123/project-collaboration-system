@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package user;
+
+import "common.proto";
+
+service UserService {
+  rpc GetUser (GetUserRequest) returns (UserResponse);
+  rpc GetUserByClerkId (GetUserByClerkIdRequest) returns (UserResponse);
+  rpc GetUsersByIds (GetUsersByIdsRequest) returns (UsersResponse);
+  rpc CreateUser (CreateUserRequest) returns (UserResponse);
+  rpc UpdateUser (UpdateUserRequest) returns (UserResponse);
+  rpc DeleteUser (DeleteUserRequest) returns (common.Response);
+  rpc SyncUser (SyncUserRequest) returns (UserResponse);
+}
+
+message GetUserRequest {
+  string id = 1;
+}
+
+message GetUserByClerkIdRequest {
+  string clerk_id = 1;
+}
+
+message GetUsersByIdsRequest {
+  repeated string ids = 1;
+}
+
+message CreateUserRequest {
+  string clerk_id = 1;
+  string email = 2;
+  string name = 3;
+  string image_url = 4;
+}
+
+message UpdateUserRequest {
+  string id = 1;
+  string name = 2;
+  string image_url = 3;
+}
+
+message DeleteUserRequest {
+  string id = 1;
+}
+
+message SyncUserRequest {
+  string clerk_id = 1;
+  string email = 2;
+  string name = 3;
+  string image_url = 4;
+}
+
+message UserResponse {
+  bool success = 1;
+  common.User user = 2;
+  string error = 3;
+}
+
+message UsersResponse {
+  bool success = 1;
+  repeated common.User users = 2;
+  string error = 3;
+}

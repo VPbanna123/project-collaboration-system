@@ -1,5 +1,5 @@
 // Shared library exports
-export * from './lib/prisma';
+// export * from './lib/prisma';
 export * from './lib/redis';
 export * from './lib/serviceClient';
 export * from './lib/dataSync';
@@ -9,3 +9,8 @@ export * from './middleware/errorHandler';
 export * from './middleware/internalAuth';
 export * from './middleware/validateGateway';
 export * from './utils/cache';
+
+// gRPC exports
+export * from './grpc/config';
+export * from './grpc/interceptors';
+export * from './grpc/errors';

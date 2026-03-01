@@ -14,13 +14,36 @@ RUN npm ci
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
 
-# Generate Prisma Client
-RUN npx prisma generate
+# Copy only frontend files (not services)
+COPY src ./src
+COPY public ./public
+COPY next.config.ts ./
+COPY tsconfig.json ./
+COPY postcss.config.mjs ./
+COPY package.json ./
+COPY .env.example ./.env.example
 
 # Build Next.js app
 ENV NEXT_TELEMETRY_DISABLED=1
+# Dummy Redis URL for build (won't connect, overridden at runtime)
+ENV REDIS_URL=redis://localhost:6379
+
+# Build args for NEXT_PUBLIC_* variables (required at build time)
+# Pass these when building: --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxx...
+ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+ARG NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+ARG NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+ARG NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
+ARG NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
+
+# Set as ENV so Next.js can access during build
+ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+ENV NEXT_PUBLIC_CLERK_SIGN_IN_URL=$NEXT_PUBLIC_CLERK_SIGN_IN_URL
+ENV NEXT_PUBLIC_CLERK_SIGN_UP_URL=$NEXT_PUBLIC_CLERK_SIGN_UP_URL
+ENV NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=$NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL
+ENV NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=$NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL
+
 RUN npm run build
 
 # Production image, copy all the files and run next
@@ -50,5 +73,9 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget --spider -q http://localhost:3000/api/health || exit 1
 
 CMD ["node", "server.js"]

@@ -1,7 +1,12 @@
-import { clerkClient } from '@clerk/nextjs/server';
+import { createClerkClient } from '@clerk/backend';
 import { prisma } from '../lib/prisma';
 import { CacheService } from '@shared/utils/cache';
 import { UserPayload } from '@shared/types';
+
+// Initialize Clerk client once
+const clerkClient = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY!,
+});
 
 export class UserService {
   /**
@@ -57,8 +62,7 @@ export class UserService {
     }
 
     // Get from Clerk
-    const client = await clerkClient();
-    const clerkUser = await client.users.getUser(clerkId);
+    const clerkUser = await clerkClient.users.getUser(clerkId);
 
     const name = `${clerkUser.firstName ?? ''} ${clerkUser.lastName ?? ''}`.trim();
     const email = clerkUser.emailAddresses[0].emailAddress;

@@ -11,6 +11,12 @@ import axios from 'axios';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
+// ============================================
+// gRPC CLIENT IMPORTS
+// ============================================
+// Used for internal service-to-service communication
+import { userServiceClient } from './grpc/clients/userClient';
+
 dotenv.config();
 
 const app = express();
@@ -105,20 +111,33 @@ async function verifyClerkAndIssueInternalToken(
       // For all other endpoints, look up the user in the database
       console.log('[Gateway Auth] Looking up user in database for Clerk ID:', payload.sub);
       try {
-        const userResponse = await axios.get(
-          `${process.env.USER_SERVICE_URL || 'http://localhost:3001'}/api/users/clerk/${payload.sub}`,
-          {
-            headers: {
-              'x-internal-api-key': process.env.INTERNAL_API_KEY,
-            },
-          }
-        );
-        user = userResponse.data.data || userResponse.data;
-        console.log('[Gateway Auth] User found:', user.id);
+        // ============================================
+        // gRPC CALL - Internal Communication
+        // ============================================
+        // OLD (HTTP/REST):
+        // const userResponse = await axios.get(
+        //   `${process.env.USER_SERVICE_URL}/api/users/clerk/${payload.sub}`
+        // );
+        // user = userResponse.data.data || userResponse.data;
+        
+        // NEW (gRPC):
+        const grpcResponse = await userServiceClient.getUserByClerkId(payload.sub);
+        
+        if (!grpcResponse.success || !grpcResponse.user) {
+          throw new Error('User not found');
+        }
+        
+        user = {
+          id: grpcResponse.user.id,
+          clerkId: grpcResponse.user.clerk_id,
+          email: grpcResponse.user.email,
+          name: grpcResponse.user.name,
+        };
+        
+        console.log('[Gateway Auth] User found via gRPC:', user.id);
       } catch (userError) {
         const errorMessage = userError instanceof Error ? userError.message : 'Unknown error';
-        console.error('[Gateway Auth] Failed to fetch user:', errorMessage);
-        console.error('[Gateway Auth] User lookup URL:', `${process.env.USER_SERVICE_URL || 'http://localhost:3001'}/api/users/clerk/${payload.sub}`);
+        console.error('[Gateway Auth] Failed to fetch user via gRPC:', errorMessage);
         res.status(401).json({ error: 'User not found' });
         return;
       }
@@ -161,6 +180,17 @@ async function verifyClerkAndIssueInternalToken(
 
 /**
  * Route all requests to appropriate service
+ * 
+ * ARCHITECTURE NOTE:
+ * - Frontend → API Gateway: HTTP/REST (this stays)
+ * - API Gateway authenticates requests with Clerk
+ * - API Gateway → Microservices: Currently HTTP proxy (can migrate to gRPC per route)
+ * - Service → Service: gRPC (internal communication)
+ * 
+ * MIGRATION STRATEGY:
+ * - Generic routes use HTTP proxy (below)
+ * - Specific internal calls use gRPC clients (like user lookup above)
+ * - New routes can be implemented with gRPC instead of proxy
  */
 
 // User routes → User Service
@@ -195,6 +225,15 @@ app.use('/api/notifications', verifyClerkAndIssueInternalToken, (req: Request, r
 
 /**
  * Proxy request to service
+ * 
+ * ============================================
+ * HTTP/REST PROXY - Legacy Communication
+ * ============================================
+ * This function proxies HTTP requests to microservices
+ * Frontend → Gateway → Services (all HTTP)
+ * 
+ * FUTURE: Can be replaced with gRPC clients per route for better performance
+ * For now, keeping HTTP proxy for simplicity while services have both HTTP & gRPC
  */
 async function proxyToService(
   serviceName: string,
@@ -237,9 +276,23 @@ async function proxyToService(
         'x-user-email': req.headers['x-user-email'] as string,
         'content-type': req.headers['content-type'] || 'application/json',
       },
+      responseType: urlObj.pathname.includes('/download') ? 'arraybuffer' : 'json',
     });
 
-    res.status(response.status).json(response.data);
+    // Handle file downloads differently (preserve headers and send raw data)
+    if (urlObj.pathname.includes('/download')) {
+      // Copy important headers for file download
+      if (response.headers['content-type']) {
+        res.setHeader('Content-Type', response.headers['content-type']);
+      }
+      if (response.headers['content-disposition']) {
+        res.setHeader('Content-Disposition', response.headers['content-disposition']);
+      }
+      res.status(response.status).send(response.data);
+    } else {
+      // Regular JSON response
+      res.status(response.status).json(response.data);
+    }
   } catch (err) {
     const error = err as Error;
     const errorMessage = error.message || 'Unknown error';

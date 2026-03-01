@@ -92,4 +92,53 @@ export class DocumentController {
     await DocumentService.deleteDocument(documentId, userId);
     res.json({ success: true, message: 'Document deleted' });
   });
+
+  /**
+   * POST /api/projects/:projectId/documents/merge
+   * Merge multiple documents into one (admin only)
+   */
+  static mergeDocuments = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const { projectId } = req.params;
+    const { documentIds, newTitle } = req.body;
+
+    if (!documentIds || !Array.isArray(documentIds) || documentIds.length < 2) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'At least 2 document IDs are required for merging' 
+      });
+    }
+
+    const mergedDocument = await DocumentService.mergeDocuments(
+      projectId,
+      userId,
+      documentIds,
+      newTitle
+    );
+
+    res.status(201).json({ 
+      success: true, 
+      data: mergedDocument,
+      message: `Successfully merged ${documentIds.length} documents`
+    });
+  });
+
+  /**
+   * GET /api/documents/:documentId/download
+   * Download document content
+   */
+  static downloadDocument = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const { documentId } = req.params;
+
+    const document = await DocumentService.downloadDocument(documentId, userId);
+
+    // Set headers for file download
+    const filename = `${document.title.replace(/[^a-z0-9]/gi, '_')}.md`;
+    res.setHeader('Content-Type', 'text/markdown');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // Send document content
+    res.send(document.content);
+  });
 }

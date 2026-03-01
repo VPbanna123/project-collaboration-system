@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { NotificationType } from '../../../node_modules/.prisma/notification-client';
+import { NotificationType } from '../generated/prisma';
 
 export class NotificationService {
   static async createNotification(data: {

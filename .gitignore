@@ -125,3 +125,11 @@ start-services-vscode.sh
 stop-services.sh
 view-logs.sh
 .vscode/
+CHAT_REALTIME_FIXES.md
+DOCKER_ENV_GUIDE.md
+DOCUMENT_MERGE_FEATURE.md
+build-docker-images.sh
+docker-compose.full.yml
+docker-compose.minimal.yml
+push-docker-images.sh
+run-migrations-docker.sh

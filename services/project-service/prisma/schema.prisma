@@ -8,7 +8,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // Project (Workspace) - PRIMARY DATA OWNER
@@ -90,11 +89,18 @@ model Document {
   createdBy String   // Reference to User in user-service (no FK)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
+  // Merge tracking
+  isMerged       Boolean  @default(false)
+  mergedFrom     String[] @default([]) // Array of document IDs that were merged into this
+  mergedBy       String?  // User ID who performed the merge
+  mergedAt       DateTime?
 
   edits DocumentEdit[]
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
+  @@index([isMerged])
   @@map("documents")
 }
 

@@ -30,8 +30,8 @@ export default async function ProjectsPage() {
     console.log("Raw results from API:", results);
     
     // Handle different response formats
-    const projectsData = results[0];
-    const teamsData = results[1];
+    const projectsData = results[0] as any;
+    const teamsData = results[1] as any;
     
     // Projects might be wrapped in { data: [...] } or direct array
     projects = Array.isArray(projectsData) 

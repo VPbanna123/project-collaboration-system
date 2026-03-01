@@ -77,6 +77,13 @@ export default function ProjectDetailPage() {
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
+  // Document merge
+  const [selectedDocsForMerge, setSelectedDocsForMerge] = useState<string[]>([]);
+  const [showMergeDialog, setShowMergeDialog] = useState(false);
+  const [mergeTitle, setMergeTitle] = useState("");
+  const [merging, setMerging] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
   const fetchDocuments = useCallback(async () => {
     try {
       const response = await fetch(`/api/projects/${projectId}/documents`);
@@ -351,6 +358,133 @@ export default function ProjectDetailPage() {
     }
   };
 
+  // Check if user is admin
+  useEffect(() => {
+    console.log('[Admin Check] Starting - dbUserId:', dbUserId, 'teamId:', project?.teamId);
+    
+    if (!dbUserId || !project?.teamId) {
+      console.log('[Admin Check] Missing data - skipping check');
+      return;
+    }
+
+    const checkAdminStatus = async () => {
+      try {
+        console.log('[Admin Check] Fetching team data for:', project.teamId);
+        const response = await fetch(`/api/teams/${project.teamId}`);
+        
+        console.log('[Admin Check] Response status:', response.status);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('[Admin Check] Response data:', data);
+          
+          const team = data.data || data;
+          const members = team.members || [];
+          
+          console.log('[Admin Check] Members:', members);
+          console.log('[Admin Check] Looking for userId:', dbUserId);
+          
+          const currentMember = members.find((m: { userId: string; role: string }) => {
+            console.log('[Admin Check] Comparing:', m.userId, '===', dbUserId, '?', m.userId === dbUserId);
+            return m.userId === dbUserId;
+          });
+          
+          const adminStatus = currentMember?.role === 'ADMIN';
+          console.log('[Admin Check] Current member:', currentMember);
+          console.log('[Admin Check] User:', dbUserId, 'Is Admin:', adminStatus, 'Role:', currentMember?.role);
+          setIsAdmin(adminStatus);
+        }
+      } catch (err) {
+        console.error("[Admin Check] Error:", err);
+      }
+    };
+
+    checkAdminStatus();
+  }, [dbUserId, project?.teamId]);
+
+  const handleMergeDocuments = async () => {
+    if (!isAdmin) {
+      toast.error("Only team admins can merge documents");
+      return;
+    }
+
+    if (selectedDocsForMerge.length < 2) {
+      toast.error("Select at least 2 documents to merge");
+      return;
+    }
+
+    setMerging(true);
+    try {
+      const response = await fetch(`/api/projects/${projectId}/documents/merge`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          documentIds: selectedDocsForMerge,
+          newTitle: mergeTitle || undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: "Failed to merge documents" }));
+        throw new Error(error.error || "Failed to merge documents");
+      }
+
+      const result = await response.json();
+      toast.success(result.message || "Documents merged successfully!");
+      
+      // Refresh documents list
+      await fetchDocuments();
+      
+      // Reset merge state
+      setSelectedDocsForMerge([]);
+      setShowMergeDialog(false);
+      setMergeTitle("");
+      
+      // Select the new merged document
+      if (result.data) {
+        setSelectedDoc(result.data);
+        setEditContent(result.data.content);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to merge documents");
+    } finally {
+      setMerging(false);
+    }
+  };
+
+  const handleDownloadDocument = async (docId: string) => {
+    try {
+      const response = await fetch(`/api/documents/${docId}/download`);
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: "Failed to download document" }));
+        throw new Error(error.error || "Failed to download document");
+      }
+
+      // Get filename from Content-Disposition header or use default
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const filenameMatch = contentDisposition?.match(/filename="?(.+)"?/);
+      const filename = filenameMatch ? filenameMatch[1] : 'document.md';
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success("Document downloaded successfully!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to download document");
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -600,13 +734,29 @@ export default function ProjectDetailPage() {
             {/* Document List */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-900 dark:text-white">Documents</h3>
-                <button
-                  onClick={() => setShowCreateDoc(!showCreateDoc)}
-                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  + New
-                </button>
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Documents</h3>
+                  {/* Debug info - remove later */}
+                  <p className="text-xs text-gray-500 mt-1">
+                    Admin: {isAdmin ? '✅ Yes' : '❌ No'} | Selected: {selectedDocsForMerge.length}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  {isAdmin && selectedDocsForMerge.length >= 2 && (
+                    <button
+                      onClick={() => setShowMergeDialog(true)}
+                      className="px-3 py-1 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                    >
+                      Merge ({selectedDocsForMerge.length})
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowCreateDoc(!showCreateDoc)}
+                    className="px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    + New
+                  </button>
+                </div>
               </div>
 
               {showCreateDoc && (
@@ -653,56 +803,82 @@ export default function ProjectDetailPage() {
                   documents.map((doc) => (
                     <div
                       key={doc.id}
-                      onClick={() => handleSelectDocument(doc)}
-                      className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                      className={`p-3 rounded-lg transition-colors ${
                         selectedDoc?.id === doc.id
                           ? "bg-blue-100 dark:bg-blue-900 border border-blue-500"
                           : "bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600"
                       }`}
                     >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <h4 className="font-medium text-gray-900 dark:text-white text-sm truncate">
-                            {doc.title}
-                          </h4>
-                          {doc.creator && (
-                            <div className="flex items-center gap-1.5 mt-1">
-                              {doc.creator.imageUrl ? (
-                                <img 
-                                  src={doc.creator.imageUrl} 
-                                  alt={doc.creator.name || doc.creator.email}
-                                  className="w-4 h-4 rounded-full"
-                                />
-                              ) : (
-                                <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px] font-semibold">
-                                  {(doc.creator.name || doc.creator.email).charAt(0).toUpperCase()}
+                      <div className="flex items-start gap-2">
+                        {/* Checkbox for merge selection (admin only) */}
+                        {isAdmin && (
+                          <div className="flex items-center pt-1">
+                            <input
+                              type="checkbox"
+                              checked={selectedDocsForMerge.includes(doc.id)}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                if (e.target.checked) {
+                                  setSelectedDocsForMerge([...selectedDocsForMerge, doc.id]);
+                                } else {
+                                  setSelectedDocsForMerge(selectedDocsForMerge.filter(id => id !== doc.id));
+                                }
+                              }}
+                              className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                            />
+                          </div>
+                        )}
+                        
+                        {/* Document info - clickable */}
+                        <div 
+                          onClick={() => handleSelectDocument(doc)}
+                          className="flex-1 cursor-pointer"
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                                {doc.title}
+                              </h4>
+                              {doc.creator && (
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  {doc.creator.imageUrl ? (
+                                    <img 
+                                      src={doc.creator.imageUrl} 
+                                      alt={doc.creator.name || doc.creator.email}
+                                      className="w-4 h-4 rounded-full"
+                                    />
+                                  ) : (
+                                    <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px] font-semibold">
+                                      {(doc.creator.name || doc.creator.email).charAt(0).toUpperCase()}
+                                    </div>
+                                  )}
+                                  <span className="text-xs text-gray-600 dark:text-gray-400">
+                                    {doc.creator.name || doc.creator.email}
+                                  </span>
+                                  {doc.createdBy === dbUserId && (
+                                    <span className="text-xs text-blue-600 dark:text-blue-400">• You</span>
+                                  )}
                                 </div>
                               )}
-                              <span className="text-xs text-gray-600 dark:text-gray-400">
-                                {doc.creator.name || doc.creator.email}
-                              </span>
-                              {doc.createdBy === dbUserId && (
-                                <span className="text-xs text-blue-600 dark:text-blue-400">• You</span>
-                              )}
                             </div>
-                          )}
+                            {doc.createdBy === dbUserId && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteDocument(doc.id);
+                                }}
+                                disabled={deleting === doc.id}
+                                className="text-red-500 hover:text-red-700 text-xs disabled:opacity-50 ml-2"
+                              >
+                                {deleting === doc.id ? "..." : "×"}
+                              </button>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Updated: {new Date(doc.updatedAt).toLocaleDateString()}
+                          </p>
                         </div>
-                        {doc.createdBy === dbUserId && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteDocument(doc.id);
-                            }}
-                            disabled={deleting === doc.id}
-                            className="text-red-500 hover:text-red-700 text-xs disabled:opacity-50 ml-2"
-                          >
-                            {deleting === doc.id ? "..." : "×"}
-                          </button>
-                        )}
                       </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Updated: {new Date(doc.updatedAt).toLocaleDateString()}
-                      </p>
                     </div>
                   ))
                 )}
@@ -742,6 +918,12 @@ export default function ProjectDetailPage() {
                       )}
                     </div>
                     <div className="flex gap-2">
+                      <button
+                        onClick={() => handleDownloadDocument(selectedDoc.id)}
+                        className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500"
+                      >
+                        ⬇ Download
+                      </button>
                       <button
                         onClick={() => setShowHistory(!showHistory)}
                         className={`px-3 py-1 text-sm rounded-lg ${
@@ -817,6 +999,70 @@ export default function ProjectDetailPage() {
                   Select a document to view or edit
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Merge Documents Dialog */}
+        {showMergeDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowMergeDialog(false)}>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Merge Documents
+              </h3>
+              
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  Merging {selectedDocsForMerge.length} documents
+                </p>
+                <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1 mb-4">
+                  {selectedDocsForMerge.map((docId, index) => {
+                    const doc = documents.find(d => d.id === docId);
+                    return doc ? (
+                      <li key={docId} className="flex items-center gap-2">
+                        <span className="text-gray-500">{index + 1}.</span>
+                        <span className="truncate">{doc.title}</span>
+                      </li>
+                    ) : null;
+                  })}
+                </ul>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  New Document Title (optional)
+                </label>
+                <input
+                  type="text"
+                  value={mergeTitle}
+                  onChange={(e) => setMergeTitle(e.target.value)}
+                  placeholder="Leave empty for auto-generated title"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Default: &quot;Merged: Doc1 + Doc2 + ...&quot;
+                </p>
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => {
+                    setShowMergeDialog(false);
+                    setMergeTitle("");
+                  }}
+                  disabled={merging}
+                  className="px-4 py-2 text-sm bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleMergeDocuments}
+                  disabled={merging}
+                  className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {merging ? "Merging..." : "Merge Documents"}
+                </button>
+              </div>
             </div>
           </div>
         )}

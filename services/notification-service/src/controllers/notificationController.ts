@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { NotificationService } from '../services/notificationService';
 import { asyncHandler } from '@shared/middleware/errorHandler';
-import { NotificationType } from '../../../node_modules/.prisma/notification-client';
+import { NotificationType } from '../generated/prisma';
 
 // NOTE: req.user.id is already the database user ID (not Clerk ID)
 // The API Gateway converts Clerk ID to database ID before forwarding

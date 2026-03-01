@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { TaskStatus, Priority } from '../../../node_modules/.prisma/project-client';
+import { TaskStatus, Priority } from '../generated/prisma';
 
 export class TaskService {
   static async createTask(data: {

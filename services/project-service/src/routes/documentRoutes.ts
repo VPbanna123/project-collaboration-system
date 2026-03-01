@@ -12,5 +12,6 @@ router.get('/:documentId', DocumentController.getDocumentById);
 router.put('/:documentId', DocumentController.updateDocument);
 router.delete('/:documentId', DocumentController.deleteDocument);
 router.get('/:documentId/edits', DocumentController.getDocumentEdits);
+router.get('/:documentId/download', DocumentController.downloadDocument);
 
 export default router;

@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package team;
+
+import "common.proto";
+
+service TeamService {
+  rpc GetTeam (GetTeamRequest) returns (TeamResponse);
+  rpc GetUserTeams (GetUserTeamsRequest) returns (TeamsResponse);
+  rpc CreateTeam (CreateTeamRequest) returns (TeamResponse);
+  rpc UpdateTeam (UpdateTeamRequest) returns (TeamResponse);
+  rpc DeleteTeam (DeleteTeamRequest) returns (common.Response);
+  rpc AddTeamMember (AddTeamMemberRequest) returns (common.Response);
+  rpc RemoveTeamMember (RemoveTeamMemberRequest) returns (common.Response);
+  rpc GetTeamMembers (GetTeamMembersRequest) returns (TeamMembersResponse);
+  rpc CheckAdmin (CheckAdminRequest) returns (CheckAdminResponse);
+  rpc CheckMember (CheckMemberRequest) returns (CheckMemberResponse);
+}
+
+message Team {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string owner_id = 4;
+  string created_at = 5;
+  string updated_at = 6;
+}
+
+message TeamMember {
+  string id = 1;
+  string user_id = 2;
+  string team_id = 3;
+  string role = 4;
+  string joined_at = 5;
+}
+
+message GetTeamRequest {
+  string id = 1;
+}
+
+message GetUserTeamsRequest {
+  string user_id = 1;
+}
+
+message CreateTeamRequest {
+  string name = 1;
+  string description = 2;
+  string owner_id = 3;
+}
+
+message UpdateTeamRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+}
+
+message DeleteTeamRequest {
+  string id = 1;
+}
+
+message AddTeamMemberRequest {
+  string team_id = 1;
+  string user_id = 2;
+  string role = 3;
+}
+
+message RemoveTeamMemberRequest {
+  string team_id = 1;
+  string user_id = 2;
+}
+message GetTeamMembersRequest {
+  string team_id = 1;
+}
+
+message TeamResponse {
+  bool success = 1;
+  Team team = 2;
+  string error = 3;
+}
+
+message TeamsResponse {
+  bool success = 1;
+  repeated Team teams = 2;
+  string error = 3;
+}
+
+message TeamMembersResponse {
+  bool success = 1;
+  repeated TeamMember members = 2;
+  string error = 3;
+}
+
+message CheckAdminRequest {
+  string team_id = 1;
+  string user_id = 2;
+}
+
+message CheckAdminResponse {
+  bool is_admin = 1;
+  string error = 2;
+}
+
+message CheckMemberRequest {
+  string team_id = 1;
+  string user_id = 2;
+}
+
+message CheckMemberResponse {
+  bool is_member = 1;
+  string error = 2;
+}

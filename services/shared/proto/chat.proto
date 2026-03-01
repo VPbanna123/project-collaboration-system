@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package chat;
+
+import "common.proto";
+
+service ChatService {
+  rpc GetChannelMessages (GetChannelMessagesRequest) returns (MessagesResponse);
+  rpc SendMessage (SendMessageRequest) returns (MessageResponse);
+  rpc GetChannels (GetChannelsRequest) returns (ChannelsResponse);
+}
+
+message Channel {
+  string id = 1;
+  string name = 2;
+  string team_id = 3;
+  string created_at = 4;
+}
+
+message Message {
+  string id = 1;
+  string content = 2;
+  string channel_id = 3;
+  string user_id = 4;
+  string user_name = 5;
+  string created_at = 6;
+}
+
+message GetChannelMessagesRequest {
+  string channel_id = 1;
+  int32 limit = 2;
+}
+
+message SendMessageRequest {
+  string content = 1;
+  string channel_id = 2;
+  string user_id = 3;
+  string user_name = 4;
+}
+
+message GetChannelsRequest {
+  string team_id = 1;
+}
+
+message MessageResponse {
+  bool success = 1;
+  Message message = 2;
+  string error = 3;
+}
+
+message MessagesResponse {
+  bool success = 1;
+  repeated Message messages = 2;
+  string error = 3;
+}
+
+message ChannelsResponse {
+  bool success = 1;
+  repeated Channel channels = 2;
+  string error = 3;
+}

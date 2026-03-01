@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { AppError } from '@shared/middleware/errorHandler';
 import { EditAction } from '../generated/prisma';
-import axios from 'axios';
+import { teamServiceClient } from '../grpc/clients/teamClient';
 
 export class DocumentService {
   /**
@@ -97,21 +97,12 @@ export class DocumentService {
       });
       
       if (project?.teamId) {
-        // Check if user is a team member via team service
+        // Check if user is a team member via gRPC
         try {
-          const teamServiceUrl = process.env.TEAM_SERVICE_URL || 'http://localhost:3002';
-          const response = await axios.get(
-            `${teamServiceUrl}/api/teams/${project.teamId}/check-member/${userId}`,
-            {
-              headers: {
-                'x-internal-api-key': process.env.INTERNAL_API_KEY,
-              },
-            }
-          );
-          canEdit = response.data?.isMember === true;
-          console.log('[DocumentService] Team member check - isMember:', canEdit, 'userId:', userId);
+          canEdit = await teamServiceClient.checkMember(project.teamId, userId);
+          console.log('[DocumentService] Team member check via gRPC - isMember:', canEdit, 'userId:', userId);
         } catch (error) {
-          console.error('[DocumentService] Failed to check team membership:', error);
+          console.error('[DocumentService] gRPC checkMember failed:', error);
           // If team service is down, only allow creator to edit
         }
       }
@@ -177,5 +168,129 @@ export class DocumentService {
     await prisma.document.delete({
       where: { id: documentId },
     });
+  }
+
+  /**
+   * Merge multiple documents into one (admin only)
+   * Combines content from source documents and creates a new merged document
+   */
+  static async mergeDocuments(
+    projectId: string,
+    userId: string,
+    documentIds: string[],
+    newTitle?: string
+  ) {
+    // Validate input
+    if (!documentIds || documentIds.length < 2) {
+      throw new AppError('At least 2 documents are required for merging', 400);
+    }
+
+    // Get project and verify it exists
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new AppError('Project not found', 404);
+    }
+
+    if (!project.teamId) {
+      throw new AppError('Project must belong to a team', 400);
+    }
+
+    // Check if user is admin of the project's team using gRPC
+    let isAdmin = false;
+    try {
+      isAdmin = await teamServiceClient.checkAdmin(project.teamId, userId);
+      console.log('[DocumentService] Admin check via gRPC - teamId:', project.teamId, 'userId:', userId, 'isAdmin:', isAdmin);
+    } catch (error) {
+      console.error('[DocumentService] gRPC checkAdmin failed:', error);
+      throw new AppError('Failed to verify admin privileges', 500);
+    }
+
+    if (!isAdmin) {
+      throw new AppError('Only team admins can merge documents', 403);
+    }
+
+    // Fetch all source documents and verify they belong to the same project
+    const documents = await prisma.document.findMany({
+      where: {
+        id: { in: documentIds },
+        projectId,
+      },
+      orderBy: { createdAt: 'asc' }, // Merge in order of creation
+    });
+
+    if (documents.length !== documentIds.length) {
+      throw new AppError('Some documents not found or do not belong to this project', 404);
+    }
+
+    // Combine document content
+    const mergedContent = documents.map((doc, index) => {
+      const separator = index === 0 ? '' : '\n\n---\n\n'; // Add separator between docs
+      const header = `# ${doc.title}\n\n`; // Add header for each merged doc
+      return separator + header + doc.content;
+    }).join('');
+
+    // Create title for merged document
+    const mergedTitle = newTitle || `Merged: ${documents.map(d => d.title).join(' + ')}`;
+
+    // Create the new merged document
+    const mergedDocument = await prisma.document.create({
+      data: {
+        title: mergedTitle,
+        content: mergedContent,
+        projectId,
+        createdBy: userId,
+        isMerged: true,
+        mergedFrom: documentIds,
+        mergedBy: userId,
+        mergedAt: new Date(),
+      },
+    });
+
+    console.log(`[DocumentService] Merged ${documentIds.length} documents into ${mergedDocument.id}`);
+
+    return mergedDocument;
+  }
+
+  /**
+   * Get document content for download
+   * Returns document with formatted content
+   */
+  static async downloadDocument(documentId: string, userId: string) {
+    const document = await prisma.document.findUnique({
+      where: { id: documentId },
+    });
+
+    if (!document) {
+      throw new AppError('Document not found', 404);
+    }
+
+    // Check if user has access to the document
+    // User can download if they are a member of the project's team
+    let hasAccess = false;
+
+    if (document.projectId) {
+      const project = await prisma.project.findUnique({
+        where: { id: document.projectId },
+      });
+
+      if (project?.teamId) {
+        try {
+          hasAccess = await teamServiceClient.checkMember(project.teamId, userId);
+          console.log('[DocumentService] Download access check via gRPC - isMember:', hasAccess, 'userId:', userId);
+        } catch (error) {
+          console.error('[DocumentService] gRPC checkMember failed:', error);
+          throw new AppError('Failed to verify access permissions', 500);
+        }
+      }
+    }
+
+    if (!hasAccess) {
+      throw new AppError('You do not have permission to download this document', 403);
+    }
+
+    return document;
   }
 }

@@ -10,4 +10,7 @@ router.use(verifyInternalApiKey);
 // Check if user is a team member
 router.get('/:teamId/check-member/:userId', TeamController.checkMembership);
 
+// Check if user is a team admin
+router.get('/:teamId/check-admin/:userId', TeamController.checkAdminStatus);
+
 export default router;

@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package project;
+
+import "common.proto";
+
+service ProjectService {
+  rpc GetProject (GetProjectRequest) returns (ProjectResponse);
+  rpc GetTeamProjects (GetTeamProjectsRequest) returns (ProjectsResponse);
+  rpc CreateProject (CreateProjectRequest) returns (ProjectResponse);
+  rpc UpdateProject (UpdateProjectRequest) returns (ProjectResponse);
+  rpc DeleteProject (DeleteProjectRequest) returns (common.Response);
+}
+
+message Project {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string team_id = 4;
+  string created_by = 5;
+  string status = 6;
+  string created_at = 7;
+  string updated_at = 8;
+}
+
+message GetProjectRequest {
+  string id = 1;
+}
+
+message GetTeamProjectsRequest {
+  string team_id = 1;
+}
+
+message CreateProjectRequest {
+  string name = 1;
+  string description = 2;
+  string team_id = 3;
+  string created_by = 4;
+}
+
+message UpdateProjectRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string status = 4;
+}
+
+message DeleteProjectRequest {
+  string id = 1;
+}
+
+message ProjectResponse {
+  bool success = 1;
+  Project project = 2;
+  string error = 3;
+}
+
+message ProjectsResponse {
+  bool success = 1;
+  repeated Project projects = 2;
+  string error = 3;
+}

@@ -5,7 +5,7 @@ const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://local
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { projectId: string } }
+  context: { params: Promise<{ projectId: string }> }
 ) {
   try {
     const { userId, getToken } = await auth();
@@ -15,8 +15,10 @@ export async function GET(
     }
 
     const token = await getToken();
+    const { projectId } = await context.params;
+    
     const response = await fetch(
-      `${API_GATEWAY_URL}/api/messages/${params.projectId}`,
+      `${API_GATEWAY_URL}/api/messages/${projectId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

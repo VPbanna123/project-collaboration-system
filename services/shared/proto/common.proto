@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package common;
+
+// Common message types used across services
+
+message Empty {}
+
+message User {
+  string id = 1;
+  string clerk_id = 2;
+  string email = 3;
+  string name = 4;
+  string image_url = 5;
+  string created_at = 6;
+  string updated_at = 7;
+}
+
+message Response {
+  bool success = 1;
+  string message = 2;
+}
+
+message ErrorResponse {
+  int32 code = 1;
+  string message = 2;
+  string details = 3;
+}
+
+message PaginationRequest {
+  int32 page = 1;
+  int32 limit = 2;
+}
+
+message PaginationResponse {
+  int32 total = 1;
+  int32 page = 2;
+  int32 limit = 3;
+  int32 total_pages = 4;
+}

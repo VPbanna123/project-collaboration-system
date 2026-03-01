@@ -17,6 +17,7 @@ router.delete('/:id', ProjectController.deleteProject);
 router.get('/:id/tasks', ProjectController.getProjectTasks);
 
 // Document routes under projects
+router.post('/:projectId/documents/merge', DocumentController.mergeDocuments);
 router.get('/:projectId/documents', DocumentController.getProjectDocuments);
 router.post('/:projectId/documents', DocumentController.createDocument);
 

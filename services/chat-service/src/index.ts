@@ -12,7 +12,19 @@ import userRoutes from './routes/userRoutes';
 import { errorHandler } from '@shared/middleware/errorHandler';
 import { setupSocketHandlers } from './sockets/chatSocket';
 
+// ============================================
+// gRPC SERVER IMPORT
+// ============================================
+import { startGrpcServer } from './grpc/server';
+
 dotenv.config();
+
+// ============================================
+// HTTP/REST + WebSocket SERVER - External Communication
+// ============================================
+// This Express + Socket.IO server handles:
+// - HTTP requests from API Gateway
+// - WebSocket connections for real-time chat
 
 const app = express();
 const httpServer = createServer(app);
@@ -69,9 +81,18 @@ async function startServer() {
   // Setup Socket.IO handlers
   setupSocketHandlers(io);
   
+  // Start HTTP/WebSocket server
   httpServer.listen(PORT, () => {
-    console.log(`🚀 Chat Service running on port ${PORT}`);
+    console.log(`🚀 [HTTP Server] Chat Service running on port ${PORT}`);
   });
+  
+  // ============================================
+  // START gRPC SERVER - Internal Communication
+  // ============================================
+  // This gRPC server handles internal service-to-service calls
+  
+  const GRPC_PORT = parseInt(process.env.GRPC_PORT || '50004');
+  startGrpcServer(GRPC_PORT);
 }
 
 startServer();

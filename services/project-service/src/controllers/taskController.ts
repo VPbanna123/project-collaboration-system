@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { TaskService } from '../services/taskService';
 import { asyncHandler } from '@shared/middleware/errorHandler';
-import { TaskStatus, Priority } from '../../../node_modules/.prisma/project-client';
+import { TaskStatus, Priority } from '../generated/prisma';
 
 export class TaskController {
   static createTask = asyncHandler(async (req: Request, res: Response) => {

@@ -34,15 +34,16 @@ export async function verifyInternalToken(
   req: Request,
   res: Response,
   next: NextFunction
-) {
+): Promise<void> {
   try {
     // Get internal token from header (set by API Gateway)
     const internalToken = req.headers['x-internal-token'] as string;
 
     if (!internalToken) {
-      return res.status(401).json({ 
+      res.status(401).json({ 
         error: 'Unauthorized - No internal token. Did you go through API Gateway?' 
       });
+      return;
     }
 
     // Verify internal JWT (fast, local verification)
@@ -70,14 +71,15 @@ export function trustGatewayHeaders(
   req: Request,
   res: Response,
   next: NextFunction
-) {
+): void {
   const userId = req.headers['x-user-id'] as string;
   const email = req.headers['x-user-email'] as string;
 
   if (!userId || !email) {
-    return res.status(401).json({ 
+    res.status(401).json({ 
       error: 'Unauthorized - Missing user headers from gateway' 
     });
+    return;
   }
 
   req.user = {
@@ -98,14 +100,15 @@ export function verifyInternalApiKey(
   req: Request,
   res: Response,
   next: NextFunction
-) {
+): void {
   const apiKey = req.headers['x-internal-api-key'] as string;
   const expectedKey = process.env.INTERNAL_API_KEY;
 
   if (!apiKey || !expectedKey || apiKey !== expectedKey) {
-    return res.status(401).json({ 
+    res.status(401).json({ 
       error: 'Unauthorized - Invalid internal API key' 
     });
+    return;
   }
 
   next();
